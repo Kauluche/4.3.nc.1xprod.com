@@ -119,11 +119,34 @@ class ReportController extends Controller
             'colors' => []
         ];
         
+        // Préparer les données pour le graphique des commandes par zone
+        $zones_orders_chart_data = [
+            'labels' => [],
+            'data' => [],
+            'colors' => []
+        ];
+        
+        // Récupérer le nombre de commandes par zone
+        $zonesWithOrderCounts = Zone::select('zones.id', 'zones.name', DB::raw('COUNT(orders.id) as orders_count'))
+            ->leftJoin('pharmacies', 'zones.id', '=', 'pharmacies.zone_id')
+            ->leftJoin('orders', 'pharmacies.id', '=', 'orders.pharmacy_id')
+            ->groupBy('zones.id', 'zones.name')
+            ->orderBy('zones.name')
+            ->get();
+            
         foreach ($stats['pharmacies_by_zone'] as $zone) {
             $zones_chart_data['labels'][] = $zone->name;
             $zones_chart_data['data'][] = $zone->pharmacies_count;
             // Générer une couleur aléatoire pour chaque zone
-            $zones_chart_data['colors'][] = 'rgba(' . rand(0, 200) . ', ' . rand(0, 200) . ', ' . rand(0, 200) . ', 0.7)';
+            $color = 'rgba(' . rand(0, 200) . ', ' . rand(0, 200) . ', ' . rand(0, 200) . ', 0.7)';
+            $zones_chart_data['colors'][] = $color;
+        }
+        
+        foreach ($zonesWithOrderCounts as $zone) {
+            $zones_orders_chart_data['labels'][] = $zone->name;
+            $zones_orders_chart_data['data'][] = $zone->orders_count;
+            // Générer une couleur aléatoire pour chaque zone
+            $zones_orders_chart_data['colors'][] = 'rgba(' . rand(0, 200) . ', ' . rand(0, 200) . ', ' . rand(0, 200) . ', 0.7)';
         }
         
         // Préparer les données pour le graphique des performances des commerciaux
@@ -133,14 +156,37 @@ class ReportController extends Controller
             'colors' => []
         ];
         
+        // Préparer les données pour le graphique des commandes par commercial
+        $commercials_orders_chart_data = [
+            'labels' => [],
+            'data' => [],
+            'colors' => []
+        ];
+        
+        // Récupérer le nombre de commandes par commercial
+        $commercialsWithOrderCounts = User::select('users.id', DB::raw("CONCAT(users.first_name, ' ', users.last_name) as name"), DB::raw('COUNT(orders.id) as orders_count'))
+            ->where('users.role', 'commercial')
+            ->leftJoin('orders', 'users.id', '=', 'orders.commercial_id')
+            ->groupBy('users.id', 'users.first_name', 'users.last_name')
+            ->orderBy('name')
+            ->get();
+        
         foreach ($stats['commercial_performance'] as $commercial) {
             $commercials_chart_data['labels'][] = $commercial->first_name . ' ' . $commercial->last_name;
             $commercials_chart_data['data'][] = $commercial->pharmacies_count;
             // Générer une couleur aléatoire pour chaque commercial
-            $commercials_chart_data['colors'][] = 'rgba(' . rand(0, 200) . ', ' . rand(0, 200) . ', ' . rand(0, 200) . ', 0.7)';
+            $color = 'rgba(' . rand(0, 200) . ', ' . rand(0, 200) . ', ' . rand(0, 200) . ', 0.7)';
+            $commercials_chart_data['colors'][] = $color;
+        }
+        
+        foreach ($commercialsWithOrderCounts as $commercial) {
+            $commercials_orders_chart_data['labels'][] = $commercial->name;
+            $commercials_orders_chart_data['data'][] = $commercial->orders_count;
+            // Générer une couleur aléatoire pour chaque commercial
+            $commercials_orders_chart_data['colors'][] = 'rgba(' . rand(0, 200) . ', ' . rand(0, 200) . ', ' . rand(0, 200) . ', 0.7)';
         }
 
-        return view('admin.reports.index', compact('stats', 'zones_chart_data', 'commercials_chart_data'));
+        return view('admin.reports.index', compact('stats', 'zones_chart_data', 'zones_orders_chart_data', 'commercials_chart_data', 'commercials_orders_chart_data'));
     }
 
     public function generate(Request $request)

@@ -31,6 +31,30 @@
                         </div>
                     </div>
 
+                    <!-- Graphiques des zones -->
+                    <div class="mb-8">
+                        <h2 class="text-xl font-semibold text-gray-900 mb-4">Analyse des zones</h2>
+                        
+                        <!-- Graphiques -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                            <!-- Graphique de répartition des pharmacies par zone -->
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                                <h3 class="text-lg font-medium text-gray-900 mb-4">Répartition des pharmacies par zone</h3>
+                                <div class="h-64">
+                                    <canvas id="zonesChart"></canvas>
+                                </div>
+                            </div>
+                            
+                            <!-- Graphique des commandes par zone -->
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                                <h3 class="text-lg font-medium text-gray-900 mb-4">Commandes par zone</h3>
+                                <div class="h-64">
+                                    <canvas id="zonesOrdersChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Pharmacies par zone -->
                     <div class="mb-8">
                         <div class="flex justify-between items-center mb-4">
@@ -124,6 +148,22 @@
                             </a>
                         </div>
                         
+                        <!-- Graphiques des commerciaux -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                                <h3 class="text-sm font-medium text-gray-700 mb-2">Répartition des pharmacies par commercial</h3>
+                                <div class="h-64">
+                                    <canvas id="commercialsChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                                <h3 class="text-sm font-medium text-gray-700 mb-2">Commandes par commercial</h3>
+                                <div class="h-64">
+                                    <canvas id="commercialsOrdersChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <!-- Statistiques des commerciaux -->
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                             <!-- Commercial qui rapporte le plus -->
@@ -199,8 +239,147 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Graphique de répartition des pharmacies par zone
+        const zonesCtx = document.getElementById('zonesChart').getContext('2d');
+        new Chart(zonesCtx, {
+            type: 'pie',
+            data: {
+                labels: @json($zones_chart_data['labels']),
+                datasets: [{
+                    data: @json($zones_chart_data['data']),
+                    backgroundColor: @json($zones_chart_data['colors']),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 15
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} pharmacies (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Graphique des commandes par zone
+        const zonesOrdersCtx = document.getElementById('zonesOrdersChart').getContext('2d');
+        new Chart(zonesOrdersCtx, {
+            type: 'bar',
+            data: {
+                labels: @json($zones_orders_chart_data['labels']),
+                datasets: [{
+                    label: 'Nombre de commandes',
+                    data: @json($zones_orders_chart_data['data']),
+                    backgroundColor: @json($zones_orders_chart_data['colors']),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        
+        // Graphique de répartition des pharmacies par commercial
+        const commercialsCtx = document.getElementById('commercialsChart').getContext('2d');
+        new Chart(commercialsCtx, {
+            type: 'pie',
+            data: {
+                labels: @json($commercials_chart_data['labels']),
+                datasets: [{
+                    data: @json($commercials_chart_data['data']),
+                    backgroundColor: @json($commercials_chart_data['colors']),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 15
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} pharmacies (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Graphique des commandes par commercial
+        const commercialsOrdersCtx = document.getElementById('commercialsOrdersChart').getContext('2d');
+        new Chart(commercialsOrdersCtx, {
+            type: 'bar',
+            data: {
+                labels: @json($commercials_orders_chart_data['labels']),
+                datasets: [{
+                    label: 'Nombre de commandes',
+                    data: @json($commercials_orders_chart_data['data']),
+                    backgroundColor: @json($commercials_orders_chart_data['colors']),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        
         // Initialisation des boutons d'export
         const exportButtons = document.querySelectorAll('.export-button');
         exportButtons.forEach(button => {

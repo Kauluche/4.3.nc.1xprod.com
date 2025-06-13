@@ -140,3 +140,23 @@ Fichiers modifiés :
 - Fichier `app/Http/Controllers/ExportController.php` : Ajout d'une méthode helper `setPeriodDates()` pour calculer les dates de début et de fin en fonction du type de période
 - Fichier `resources/views/dashboard.blade.php` : Suppression du bouton d'export CSV dans la section "Commandes récentes" qui n'était pas nécessaire pour une interface plus propre
 - Modification des méthodes d'export (`exportCommercialSales`, `exportCommercialClients`, `exportCommercialRecentSales`) pour utiliser la méthode helper et garantir que les exports reflètent exactement la même période que celle affichée dans les graphiques
+
+**[13/06/2025 - 17:08]** Ajout de graphiques interactifs pour l'analyse des zones :
+- Graphique circulaire montrant la répartition des pharmacies par zone
+- Graphique en barres présentant le nombre de commandes par zone
+- Intégration de Chart.js pour des visualisations dynamiques et interactives
+- Affichage des pourcentages et des valeurs précises au survol des graphiques
+
+Fichiers modifiés :
+- `resources/views/admin/reports/index.blade.php`
+- `app/Http/Controllers/Admin/ReportController.php`
+
+**[13/06/2025 - 17:13]** Ajout de graphiques interactifs pour l'analyse des performances des commerciaux :
+- Graphique circulaire montrant la répartition des pharmacies par commercial
+- Graphique en barres présentant le nombre de commandes par commercial
+- Configuration des graphiques avec les mêmes styles et fonctionnalités que les graphiques des zones
+- Affichage des pourcentages et des valeurs précises au survol des graphiques
+
+Fichiers modifiés :
+- `resources/views/admin/reports/index.blade.php`
+- `app/Http/Controllers/Admin/ReportController.php`
