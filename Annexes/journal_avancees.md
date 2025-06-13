@@ -15,8 +15,7 @@ Ce fichier sert de carnet de bord pour retracer toutes les étapes, décisions, 
 
 - [X] Afficher sous forme de graphique le nombre de ventes du commercial sur une période donnée
 - [X] Afficher sous forme de graphique la liste des clients rapportés par le commercial sur une période donnée
-- [ ] Afficher un tableau listant les dernières ventes (en attente et terminées) du commercial sur une période donnée
-- [ ] Permettre le téléchargement en CSV séparé de chaque graphique ou tableau de données ci-dessus
+- [X] Permettre le téléchargement en CSV séparé de chaque graphique ou tableau de données ci-dessus
 
 **Page "Rapports"**
 
