@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Styles personnalisés - Début */
+@layer components {
+    .btn-primary {
+        @apply inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150;
+    }
+    
+    .btn-secondary {
+        @apply inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150;
+    }
+    
+    .form-input {
+        @apply mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm;
+    }
+    
+    .form-label {
+        @apply block text-sm font-medium text-gray-700;
+    }
+    
+    .card {
+        @apply bg-white overflow-hidden shadow-sm rounded-lg;
+    }
+    
+    .table-container {
+        @apply bg-white shadow-md rounded-lg overflow-hidden;
+    }
+    
+    .table {
+        @apply min-w-full divide-y divide-gray-200;
+    }
+    
+    .table-header {
+        @apply px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
+    }
+    
+    .table-body {
+        @apply bg-white divide-y divide-gray-200;
+    }
+    
+    .table-cell {
+        @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900;
+    }
+    
+    .table-row {
+        @apply hover:bg-gray-50;
+    }
+    
+    .table-row:nth-child(even) {
+        @apply bg-gray-50;
+    }
+    
+    .table-row:nth-child(odd) {
+        @apply bg-white;
+    }
+}
+/* Styles personnalisés - Fin */

@@ -1,0 +1,171 @@
+% Plan du rapport individuel NaturaCorp (version avancée)
+
+% ===================
+% Préambule avancé
+% ===================
+
+\documentclass[a4paper,12pt]{report}
+
+% Numérotation personnalisée
+\renewcommand{\thesection}{\arabic{section}}
+\renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
+
+% Packages principaux
+\usepackage[french]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{titlesec}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{hyperref}
+\usepackage[most]{tcolorbox}
+\usepackage{tikz}
+\usepackage{listings}
+\usepackage{enumitem}
+
+% Configuration des liens hypertextes
+\definecolor{naturacorpgreen}{RGB}{0,128,64}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=naturacorpgreen,
+    urlcolor=blue,
+    citecolor=blue,
+    pdftitle={Rapport Individuel - NaturaCorp},
+    pdfauthor={À compléter},
+    pdfsubject={Documentation de maintenance évolutive},
+    pdfkeywords={NaturaCorp, Maintenance, Évolution, Rapport},
+    pdfstartview={FitH},
+    bookmarksnumbered=true,
+    pdfpagemode=UseOutlines
+}
+
+% Mise en page
+\geometry{margin=2.5cm}
+
+% Couleurs personnalisées
+\definecolor{lightgray}{HTML}{F2F2F2}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+% Personnalisation des titres
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{naturacorpgreen}}
+  {\thesection}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries}
+  {\thesubsection}{1em}{}
+
+% En-tête et pied de page
+\usepackage{fancyhdr}
+\fancyhf{}
+\fancyfoot[L]{Juin 2025}
+\fancyfoot[C]{NaturaCorp - Maintenance évolutive}
+\fancyfoot[R]{\thepage}
+\renewcommand{\footrulewidth}{0.4pt}
+\pagestyle{fancy}
+
+% ===================
+% Début du document
+% ===================
+\begin{document}
+
+% --- PAGE DE GARDE ---
+\thispagestyle{empty}
+\begin{center}
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=5cm]{naturacorp.png}
+        \vspace{0.3cm}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.45\textwidth}
+        \centering
+        \includegraphics[width=5cm]{esn.jpeg}
+        \vspace{0.3cm}
+    \end{minipage}
+    \vspace*{0.5cm}
+    
+    % Titre principal
+    {\Huge\bfseries\color{naturacorpgreen} Rapport Individuel – Projet NaturaCorp\par}
+    \vspace{1.2cm}
+    
+    % Sous-titre
+    {\LARGE\bfseries Livrable 4.3 – Maintenance évolutive\par}
+    \vspace{2cm}
+    
+    % Auteur
+    {\Large\bfseries Réalisé par :\par}
+    \vspace{0.3cm}
+    {\Large SELLIER Luka\par}
+    \vspace{0.5cm}
+    {\large Formation : Bachelor 3 Développement WEB\par}
+    \vspace{0.3cm}
+    \vspace{0.3cm}
+    {\large Année universitaire : 2024--2025\par}
+    \vspace{1.5cm}
+    
+    % Informations projet
+    \begin{minipage}{0.8\textwidth}
+        \centering
+        \textbf{Projet d’évolution fonctionnelle}\
+        \vspace{0.2cm}
+        Maintenance évolutive de la solution numérique NaturaCorp
+    \end{minipage}
+    \vspace{1.5cm}
+    
+    % Date
+    {\large Juin 2025\par}
+\vspace*{\fill}
+\begin{center}
+    \textbf{Livrable 4.3 : Maintenance évolutive}
+\end{center}
+\end{center}
+
+\newpage
+% --- SOMMAIRE ---
+\renewcommand{\contentsname}{Sommaire}
+\tableofcontents
+\newpage
+
+\section{Introduction}
+  \subsection{Contexte du projet et de la roadmap}
+  \subsection{Objectifs de la fonctionnalité choisie}
+
+\section{Analyse préalable}
+  \subsection{Enjeux fonctionnels, techniques ou utilisateurs}
+  \subsection{Contraintes identifiées}
+
+\section{Conception}
+  \subsection{Schéma de base de données (si applicable)}
+  \subsection{Diagrammes ou maquettes (si utiles à la compréhension)}
+  \subsection{Choix techniques argumentés}
+
+\section{Réalisation}
+  \subsection{Développement effectué}
+  \subsection{Captures de code ou extraits clés avec explication}
+  \subsection{Difficultés rencontrées et gestion}
+
+\section{Tests et validation}
+  \subsection{Scénarios de tests mis en place}
+  \subsection{Résultats observés}
+  \subsection{Outils utilisés (Postman, Lighthouse, etc.)}
+
+\section{Procédure de mise à jour}
+  \subsection{Liste des fichiers modifiés}
+  \subsection{Étapes nécessaires pour intégrer la fonctionnalité dans le projet existant}
+  \subsection{Commandes à exécuter si des dépendances ont été ajoutées}
+  \subsection{Précisions sur l’installation ou la mise à jour éventuelle de la base de données}
+
+\section{Bilan personnel}
+  \subsection{Apports de cette épreuve}
+  \subsection{Retour sur la méthodologie utilisée}
+  \subsection{Recommandations éventuelles}
+
+\end{document}

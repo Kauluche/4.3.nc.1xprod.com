@@ -1,0 +1,49 @@
+/node_modules
+/public/hot
+/public/storage
+/storage/*.key
+/vendor
+.env
+.env.backup
+.phpunit.result.cache
+docker-compose.override.yml
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+/.idea
+/.vscode
+/.vagrant
+.phpunit.result.cache
+/.fleet
+/.php-cs-fixer.cache
+
+# Ignorer les fichiers de compilation
+/public/css
+/public/js
+/public/mix-manifest.json
+
+# Ignorer les fichiers de cache
+*.cache
+*.log
+
+# Ignorer les fichiers système
+.DS_Store
+Thumbs.db
+
+# Ignorer les fichiers temporaires
+*.swp
+*.swo
+*.tmp
+*.bak
+
+# Ignorer les fichiers de configuration locaux
+.env.local
+.env.*.local
+
+# Ignorer les fichiers de dépendances
+composer.phar
+/public/packages/
+
+# Ignorer les fichiers de déploiement
+/.deployment
