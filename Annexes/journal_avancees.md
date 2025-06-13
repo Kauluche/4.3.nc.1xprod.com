@@ -51,6 +51,15 @@ Fichiers modifiés :
 Fichiers modifiés :
 - `app/Http/Controllers/ExportController.php`
 
+**[15/06/2025 - 11:00]** Ajout de blocs de statistiques synthétiques sur la page des rapports administrateur :
+- Pour les zones : affichage de la zone qui rapporte le plus (chiffre total des ventes), qui commande le plus (nombre total de commandes) et qui a le plus de pharmacies
+- Pour les commerciaux : affichage du commercial qui rapporte le plus (chiffre total des ventes), qui a fait le plus de commandes et qui a ramené le plus de clients actifs
+- Mise en forme visuelle cohérente avec le reste de l'interface (utilisation de Tailwind CSS)
+
+Fichiers modifiés :
+- `resources/views/admin/reports/index.blade.php`
+- `app/Http/Controllers/ReportController.php`
+
 **1.0 Début** : Création d’une branche de développement pour débuter le travail sur les nouvelles fonctionnalités du dashboard commercial.
 
 **[12/06/2025 - 15:20]** Création du contrôleur `ExportController.php` pour gérer les exports CSV des données. Ce contrôleur contient les méthodes suivantes :

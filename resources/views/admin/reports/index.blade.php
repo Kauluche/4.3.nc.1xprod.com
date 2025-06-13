@@ -43,6 +43,42 @@
                             </a>
                         </div>
                         
+                        <!-- Statistiques des zones -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <!-- Zone qui rapporte le plus -->
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                                <h3 class="text-sm font-medium text-gray-500 mb-1">Zone qui rapporte le plus</h3>
+                                @if($stats['top_zones']['revenue'])
+                                    <p class="text-lg font-bold text-gray-900">{{ $stats['top_zones']['revenue']['name'] }}</p>
+                                    <p class="text-2xl font-bold text-green-600">{{ $stats['top_zones']['revenue']['formatted_value'] }}</p>
+                                @else
+                                    <p class="text-lg font-bold text-gray-900">Aucune donnée</p>
+                                @endif
+                            </div>
+                            
+                            <!-- Zone qui commande le plus -->
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                                <h3 class="text-sm font-medium text-gray-500 mb-1">Zone qui commande le plus</h3>
+                                @if($stats['top_zones']['orders'])
+                                    <p class="text-lg font-bold text-gray-900">{{ $stats['top_zones']['orders']['name'] }}</p>
+                                    <p class="text-2xl font-bold text-blue-600">{{ $stats['top_zones']['orders']['formatted_value'] }} commandes</p>
+                                @else
+                                    <p class="text-lg font-bold text-gray-900">Aucune donnée</p>
+                                @endif
+                            </div>
+                            
+                            <!-- Zone avec le plus de pharmacies -->
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                                <h3 class="text-sm font-medium text-gray-500 mb-1">Zone avec le plus de pharmacies</h3>
+                                @if($stats['top_zones']['pharmacies'])
+                                    <p class="text-lg font-bold text-gray-900">{{ $stats['top_zones']['pharmacies']['name'] }}</p>
+                                    <p class="text-2xl font-bold text-orange-600">{{ $stats['top_zones']['pharmacies']['formatted_value'] }} pharmacies</p>
+                                @else
+                                    <p class="text-lg font-bold text-gray-900">Aucune donnée</p>
+                                @endif
+                            </div>
+                        </div>
+                        
                         <div class="bg-gray-50 rounded-lg overflow-hidden">
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-100">
@@ -86,6 +122,42 @@
                                 </svg>
                                 Exporter tous les commerciaux (CSV)
                             </a>
+                        </div>
+                        
+                        <!-- Statistiques des commerciaux -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <!-- Commercial qui rapporte le plus -->
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                                <h3 class="text-sm font-medium text-gray-500 mb-1">Commercial qui rapporte le plus</h3>
+                                @if($stats['top_commercials']['revenue'])
+                                    <p class="text-lg font-bold text-gray-900">{{ $stats['top_commercials']['revenue']['name'] }}</p>
+                                    <p class="text-2xl font-bold text-green-600">{{ $stats['top_commercials']['revenue']['formatted_value'] }}</p>
+                                @else
+                                    <p class="text-lg font-bold text-gray-900">Aucune donnée</p>
+                                @endif
+                            </div>
+                            
+                            <!-- Commercial avec le plus de commandes -->
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                                <h3 class="text-sm font-medium text-gray-500 mb-1">Commercial avec le plus de commandes</h3>
+                                @if($stats['top_commercials']['orders'])
+                                    <p class="text-lg font-bold text-gray-900">{{ $stats['top_commercials']['orders']['name'] }}</p>
+                                    <p class="text-2xl font-bold text-blue-600">{{ $stats['top_commercials']['orders']['formatted_value'] }} commandes</p>
+                                @else
+                                    <p class="text-lg font-bold text-gray-900">Aucune donnée</p>
+                                @endif
+                            </div>
+                            
+                            <!-- Commercial avec le plus de clients -->
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                                <h3 class="text-sm font-medium text-gray-500 mb-1">Commercial avec le plus de clients</h3>
+                                @if($stats['top_commercials']['clients'])
+                                    <p class="text-lg font-bold text-gray-900">{{ $stats['top_commercials']['clients']['name'] }}</p>
+                                    <p class="text-2xl font-bold text-orange-600">{{ $stats['top_commercials']['clients']['formatted_value'] }} clients</p>
+                                @else
+                                    <p class="text-lg font-bold text-gray-900">Aucune donnée</p>
+                                @endif
+                            </div>
                         </div>
                         
                         <div class="bg-gray-50 rounded-lg overflow-hidden">

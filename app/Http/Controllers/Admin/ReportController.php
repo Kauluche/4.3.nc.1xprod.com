@@ -14,6 +14,7 @@ class ReportController extends Controller
 {
     public function index()
     {
+        // Statistiques de base
         $stats = [
             'total_orders' => Order::count(),
             'total_pharmacies' => Pharmacy::count(),
@@ -23,6 +24,92 @@ class ReportController extends Controller
             'commercial_performance' => User::where('role', 'commercial')
                 ->withCount('pharmacies')
                 ->get(),
+        ];
+        
+        // Statistiques des zones
+        // 1. Zone qui rapporte le plus
+        $topRevenueZone = Zone::select('zones.id', 'zones.name', DB::raw('SUM(order_items.quantity * order_items.unit_price * (1 - order_items.discount_percentage / 100)) as total_revenue'))
+            ->join('pharmacies', 'zones.id', '=', 'pharmacies.zone_id')
+            ->join('orders', 'pharmacies.id', '=', 'orders.pharmacy_id')
+            ->join('order_items', 'orders.id', '=', 'order_items.order_id')
+            ->groupBy('zones.id', 'zones.name')
+            ->orderBy('total_revenue', 'desc')
+            ->first();
+        
+        // 2. Zone avec le plus de commandes
+        $topOrdersZone = Zone::select('zones.id', 'zones.name', DB::raw('COUNT(orders.id) as orders_count'))
+            ->join('pharmacies', 'zones.id', '=', 'pharmacies.zone_id')
+            ->join('orders', 'pharmacies.id', '=', 'orders.pharmacy_id')
+            ->groupBy('zones.id', 'zones.name')
+            ->orderBy('orders_count', 'desc')
+            ->first();
+        
+        // 3. Zone avec le plus de pharmacies (déjà disponible dans pharmacies_by_zone)
+        $topPharmaciesZone = Zone::withCount('pharmacies')
+            ->orderBy('pharmacies_count', 'desc')
+            ->first();
+        
+        $stats['top_zones'] = [
+            'revenue' => $topRevenueZone ? [
+                'name' => $topRevenueZone->name,
+                'value' => $topRevenueZone->total_revenue,
+                'formatted_value' => number_format($topRevenueZone->total_revenue, 2, ',', ' ') . ' €'
+            ] : null,
+            'orders' => $topOrdersZone ? [
+                'name' => $topOrdersZone->name,
+                'value' => $topOrdersZone->orders_count,
+                'formatted_value' => $topOrdersZone->orders_count
+            ] : null,
+            'pharmacies' => $topPharmaciesZone ? [
+                'name' => $topPharmaciesZone->name,
+                'value' => $topPharmaciesZone->pharmacies_count,
+                'formatted_value' => $topPharmaciesZone->pharmacies_count
+            ] : null
+        ];
+        
+        // Statistiques des commerciaux
+        // 1. Commercial qui rapporte le plus
+        $topRevenueCommercial = User::select('users.id', 'users.first_name', 'users.last_name', DB::raw('SUM(order_items.quantity * order_items.unit_price * (1 - order_items.discount_percentage / 100)) as total_revenue'))
+            ->where('users.role', 'commercial')
+            ->join('orders', 'users.id', '=', 'orders.commercial_id')
+            ->join('order_items', 'orders.id', '=', 'order_items.order_id')
+            ->groupBy('users.id', 'users.first_name', 'users.last_name')
+            ->orderBy('total_revenue', 'desc')
+            ->first();
+        
+        // 2. Commercial avec le plus de commandes
+        $topOrdersCommercial = User::select('users.id', 'users.first_name', 'users.last_name', DB::raw('COUNT(orders.id) as orders_count'))
+            ->where('users.role', 'commercial')
+            ->join('orders', 'users.id', '=', 'orders.commercial_id')
+            ->groupBy('users.id', 'users.first_name', 'users.last_name')
+            ->orderBy('orders_count', 'desc')
+            ->first();
+        
+        // 3. Commercial avec le plus de clients (pharmacies avec statut 'client')
+        $topClientsCommercial = User::select('users.id', 'users.first_name', 'users.last_name', DB::raw('COUNT(pharmacies.id) as clients_count'))
+            ->where('users.role', 'commercial')
+            ->join('pharmacies', 'users.id', '=', 'pharmacies.commercial_id')
+            ->where('pharmacies.status', 'client') // Uniquement les clients, pas les prospects
+            ->groupBy('users.id', 'users.first_name', 'users.last_name')
+            ->orderBy('clients_count', 'desc')
+            ->first();
+        
+        $stats['top_commercials'] = [
+            'revenue' => $topRevenueCommercial ? [
+                'name' => $topRevenueCommercial->first_name . ' ' . $topRevenueCommercial->last_name,
+                'value' => $topRevenueCommercial->total_revenue,
+                'formatted_value' => number_format($topRevenueCommercial->total_revenue, 2, ',', ' ') . ' €'
+            ] : null,
+            'orders' => $topOrdersCommercial ? [
+                'name' => $topOrdersCommercial->first_name . ' ' . $topOrdersCommercial->last_name,
+                'value' => $topOrdersCommercial->orders_count,
+                'formatted_value' => $topOrdersCommercial->orders_count
+            ] : null,
+            'clients' => $topClientsCommercial ? [
+                'name' => $topClientsCommercial->first_name . ' ' . $topClientsCommercial->last_name,
+                'value' => $topClientsCommercial->clients_count,
+                'formatted_value' => $topClientsCommercial->clients_count
+            ] : null
         ];
         
         // Préparer les données pour le graphique des pharmacies par zone
