@@ -171,3 +171,20 @@ Fichiers modifiés :
 - Visualisations interactives avec Chart.js
 
 Le projet NaturaCorp est maintenant complet avec toutes les fonctionnalités demandées implémentées et testées.
+
+**[13/06/2025 - 17:35]** Récapitulatif des fichiers modifiés dans le projet :
+
+**Fichiers créés :**
+- `app/Http/Controllers/ExportController.php` : Contrôleur pour gérer tous les exports CSV
+
+**Fichiers modifiés :**
+- `app/Http/Controllers/Admin/ReportController.php` : Ajout des statistiques synthétiques et des données pour les graphiques
+- `app/Http/Controllers/DashboardController.php` : Préparation des données pour les graphiques et correction du bug SQL
+- `resources/views/admin/reports/index.blade.php` : Ajout des graphiques, des statistiques et des boutons d'export
+- `resources/views/dashboard.blade.php` : Ajout des graphiques et des boutons d'export CSV
+- `routes/web.php` : Ajout des routes pour les exports CSV
+- `Annexes/journal_avancees.md` : Documentation du projet
+
+**Bibliothèques externes utilisées :**
+- Chart.js : Pour la création des graphiques interactifs
+- Tailwind CSS : Déjà présent dans le projet, utilisé pour le style
