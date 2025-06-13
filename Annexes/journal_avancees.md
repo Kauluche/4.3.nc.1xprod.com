@@ -105,3 +105,9 @@ Ce fichier sert de carnet de bord pour retracer toutes les étapes, décisions, 
 - Ajout de styles CSS pour forcer les éléments canvas à prendre toute la largeur disponible
 - Optimisation du rendu des graphiques avec des options de mise en page et de légende améliorées
 
+**[13/06/2025 - 15:27]** Correction de la période de 3 mois et synchronisation des exports :
+- Fichier `app/Http/Controllers/DashboardController.php` : Correction du calcul de la période "3 derniers mois" pour qu'elle couvre exactement 3 mois (mois courant + 2 mois précédents) au lieu de 4 mois en modifiant `subMonths(3)` par `subMonths(2)`
+- Fichier `resources/views/dashboard.blade.php` : Mise à jour des liens d'export CSV dans les sections des graphiques de ventes et clients pour qu'ils transmettent les paramètres de période actuellement sélectionnée (`period_type`, `start_date`, `end_date`)
+- Fichier `app/Http/Controllers/ExportController.php` : Ajout d'une méthode helper `setPeriodDates()` pour calculer les dates de début et de fin en fonction du type de période
+- Fichier `resources/views/dashboard.blade.php` : Suppression du bouton d'export CSV dans la section "Commandes récentes" qui n'était pas nécessaire pour une interface plus propre
+- Modification des méthodes d'export (`exportCommercialSales`, `exportCommercialClients`, `exportCommercialRecentSales`) pour utiliser la méthode helper et garantir que les exports reflètent exactement la même période que celle affichée dans les graphiques
