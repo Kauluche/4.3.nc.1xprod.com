@@ -19,16 +19,37 @@ Ce fichier sert de carnet de bord pour retracer toutes les étapes, décisions, 
 
 **Page "Rapports"**
 
-- [ ] (Tableau 1) Pharmacies par zone : permettre le téléchargement de toutes les infos de toutes les zones au format CSV
-- [ ] (Tableau 1) Pharmacies par zone : permettre le téléchargement des infos d'une zone en particulier au format CSV
-- [ ] (Tableau 2) Performances des commerciaux : permettre le téléchargement de toutes les infos de tous les commerciaux (ventes, zones affectées, nombre de pharmacies, total rapporté en €) au format CSV
-- [ ] (Tableau 2) Performances des commerciaux : permettre le téléchargement des infos d'un commercial en particulier au format CSV
+- [X] (Tableau 1) Pharmacies par zone : permettre le téléchargement de toutes les infos de toutes les zones au format CSV
+- [X] (Tableau 1) Pharmacies par zone : permettre le téléchargement des infos d'une zone en particulier au format CSV
+- [X] (Tableau 2) Performances des commerciaux : permettre le téléchargement de toutes les infos de tous les commerciaux (ventes, zone affectée, nombre de pharmacies, total rapporté en €) au format CSV
+- [X] (Tableau 2) Performances des commerciaux : permettre le téléchargement des infos d'un commercial en particulier au format CSV
 
 ---
 
 ## Journal
 
 **[12/06/2025 - 14:27]** Initialisation d’un dépôt Git pour versionner l’ensemble du projet et tracer toutes les modifications.
+
+**[13/06/2025 - 15:55]** Implémentation des fonctionnalités d'export CSV pour la page des rapports admin :
+- Correction du style des boutons d'export pour une meilleure cohérence visuelle
+- Suppression des graphiques redondants pour une interface plus épurée
+- Correction d'un bug dans l'export des performances des commerciaux (relation 'zones' non définie)
+- Mise à jour des en-têtes de colonnes pour refléter la structure de données correcte (un commercial est assigné à une seule zone)
+
+Fichiers modifiés :
+- `resources/views/admin/reports/index.blade.php`
+- `app/Http/Controllers/ExportController.php`
+
+**[13/06/2025 - 16:00]** Ajout d'une entrée dans le journal pour documenter les modifications apportées aujourd'hui.
+
+**[14/06/2025 - 10:15]** Enrichissement des exports CSV pour les rapports administrateur :
+- Ajout de nombreuses informations supplémentaires dans l'export des pharmacies par zone (email, téléphone, objectif mensuel, nombre de commandes, montant total des commandes, etc.)
+- Ajout de métriques détaillées dans l'export des performances des commerciaux (téléphone, date d'embauche, nombre de commandes, moyenne par commande, objectif mensuel total, performance en pourcentage, nombre de clients actifs)
+- Ajout d'une liste des pharmacies assignées dans l'export d'un commercial spécifique
+- Amélioration des calculs pour inclure toutes les commandes liées à un commercial
+
+Fichiers modifiés :
+- `app/Http/Controllers/ExportController.php`
 
 **1.0 Début** : Création d’une branche de développement pour débuter le travail sur les nouvelles fonctionnalités du dashboard commercial.
 

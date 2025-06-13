@@ -209,23 +209,44 @@ class ExportController extends Controller
             'Expires' => '0'
         ];
         
-        $columns = ['ID Zone', 'Nom Zone', 'ID Pharmacie', 'Nom Pharmacie', 'Adresse', 'Ville', 'Code Postal', 'Statut'];
+        $columns = ['ID Zone', 'Nom Zone', 'Description Zone', 'Nombre Total de Pharmacies', 'ID Pharmacie', 'Nom Pharmacie', 'Email', 'Téléphone', 'Adresse', 'Ville', 'Code Postal', 'Pays', 'Statut', 'Objectif Mensuel (€)', 'Commercial Assigné', 'Nombre de Commandes', 'Montant Total des Commandes (€)'];
         
         $callback = function() use ($zones, $columns) {
             $file = fopen('php://output', 'w');
             fputcsv($file, $columns);
             
             foreach ($zones as $zone) {
+                // Calculer le nombre total de pharmacies dans la zone
+                $totalPharmacies = $zone->pharmacies->count();
+                
                 foreach ($zone->pharmacies as $pharmacy) {
+                    // Calculer le nombre de commandes et le montant total pour cette pharmacie
+                    $orderCount = $pharmacy->orders()->count();
+                    $orderTotal = $pharmacy->orders()
+                        ->join('order_items', 'orders.id', '=', 'order_items.order_id')
+                        ->sum(\DB::raw('order_items.quantity * order_items.unit_price * (1 - order_items.discount_percentage / 100)'));
+                    
+                    // Récupérer le nom du commercial assigné
+                    $commercialName = $pharmacy->commercial ? $pharmacy->commercial->first_name . ' ' . $pharmacy->commercial->last_name : 'Non assigné';
+                    
                     $row = [
                         $zone->id,
                         $zone->name,
+                        $zone->description ?? 'Aucune description',
+                        $totalPharmacies,
                         $pharmacy->id,
                         $pharmacy->name,
+                        $pharmacy->email,
+                        $pharmacy->phone,
                         $pharmacy->address,
                         $pharmacy->city,
                         $pharmacy->postal_code,
-                        $pharmacy->status
+                        $pharmacy->country,
+                        $pharmacy->status,
+                        number_format($pharmacy->monthly_goal, 2, ',', ' '),
+                        $commercialName,
+                        $orderCount,
+                        number_format($orderTotal, 2, ',', ' ')
                     ];
                     
                     fputcsv($file, $row);
@@ -255,20 +276,43 @@ class ExportController extends Controller
             'Expires' => '0'
         ];
         
-        $columns = ['ID Pharmacie', 'Nom Pharmacie', 'Adresse', 'Ville', 'Code Postal', 'Statut'];
+        $columns = ['ID Zone', 'Nom Zone', 'Description Zone', 'Nombre Total de Pharmacies', 'ID Pharmacie', 'Nom Pharmacie', 'Email', 'Téléphone', 'Adresse', 'Ville', 'Code Postal', 'Pays', 'Statut', 'Objectif Mensuel (€)', 'Commercial Assigné', 'Nombre de Commandes', 'Montant Total des Commandes (€)'];
         
         $callback = function() use ($zone, $columns) {
             $file = fopen('php://output', 'w');
             fputcsv($file, $columns);
             
+            // Calculer le nombre total de pharmacies dans la zone
+            $totalPharmacies = $zone->pharmacies->count();
+            
             foreach ($zone->pharmacies as $pharmacy) {
+                // Calculer le nombre de commandes et le montant total pour cette pharmacie
+                $orderCount = $pharmacy->orders()->count();
+                $orderTotal = $pharmacy->orders()
+                    ->join('order_items', 'orders.id', '=', 'order_items.order_id')
+                    ->sum(\DB::raw('order_items.quantity * order_items.unit_price * (1 - order_items.discount_percentage / 100)'));
+                
+                // Récupérer le nom du commercial assigné
+                $commercialName = $pharmacy->commercial ? $pharmacy->commercial->first_name . ' ' . $pharmacy->commercial->last_name : 'Non assigné';
+                
                 $row = [
+                    $zone->id,
+                    $zone->name,
+                    $zone->description ?? 'Aucune description',
+                    $totalPharmacies,
                     $pharmacy->id,
                     $pharmacy->name,
+                    $pharmacy->email,
+                    $pharmacy->phone,
                     $pharmacy->address,
                     $pharmacy->city,
                     $pharmacy->postal_code,
-                    $pharmacy->status
+                    $pharmacy->country,
+                    $pharmacy->status,
+                    number_format($pharmacy->monthly_goal, 2, ',', ' '),
+                    $commercialName,
+                    $orderCount,
+                    number_format($orderTotal, 2, ',', ' ')
                 ];
                 
                 fputcsv($file, $row);
@@ -287,7 +331,7 @@ class ExportController extends Controller
     {
         $commercials = User::where('role', 'commercial')
             ->withCount('pharmacies')
-            ->with('zones')
+            ->with('zone')
             ->get();
         
         $filename = 'performances_commerciaux_' . Carbon::now()->format('Ymd_His') . '.csv';
@@ -300,7 +344,7 @@ class ExportController extends Controller
             'Expires' => '0'
         ];
         
-        $columns = ['ID', 'Nom', 'Prénom', 'Email', 'Zones affectées', 'Nombre de pharmacies', 'Total rapporté (€)'];
+        $columns = ['ID', 'Nom', 'Prénom', 'Email', 'Téléphone', 'Date d\'embauche', 'Zone affectée', 'Nombre de pharmacies', 'Nombre de commandes', 'Total rapporté (€)', 'Moyenne par commande (€)', 'Objectif mensuel total (€)', 'Performance (%)', 'Nombre de clients actifs'];
         
         $callback = function() use ($commercials, $columns) {
             $file = fopen('php://output', 'w');
@@ -309,21 +353,55 @@ class ExportController extends Controller
             foreach ($commercials as $commercial) {
                 // Calculer le total rapporté par le commercial
                 $pharmacyIds = $commercial->pharmacies()->pluck('id')->toArray();
-                $totalAmount = Order::whereIn('pharmacy_id', $pharmacyIds)
-                    ->join('order_items', 'orders.id', '=', 'order_items.order_id')
-                    ->sum(\DB::raw('order_items.quantity * order_items.unit_price * (1 - order_items.discount_percentage / 100)'));
                 
-                // Récupérer les zones affectées au commercial
-                $zones = $commercial->zones->pluck('name')->implode(', ');
+                // Obtenir toutes les commandes pour calculer différentes métriques
+                $orders = Order::whereIn('pharmacy_id', $pharmacyIds)
+                    ->orWhere('commercial_id', $commercial->id)
+                    ->get();
+                
+                $orderCount = $orders->count();
+                
+                // Calculer le montant total des commandes
+                $totalAmount = 0;
+                foreach ($orders as $order) {
+                    $orderTotal = $order->items->sum(function($item) {
+                        return $item->quantity * $item->unit_price * (1 - $item->discount_percentage / 100);
+                    });
+                    $totalAmount += $orderTotal;
+                }
+                
+                // Calculer la moyenne par commande
+                $averageOrderAmount = $orderCount > 0 ? $totalAmount / $orderCount : 0;
+                
+                // Calculer l'objectif mensuel total (somme des objectifs de toutes les pharmacies assignées)
+                $totalMonthlyGoal = $commercial->pharmacies()->sum('monthly_goal');
+                
+                // Calculer la performance (total rapporté / objectif mensuel * 100)
+                $performance = $totalMonthlyGoal > 0 ? ($totalAmount / $totalMonthlyGoal) * 100 : 0;
+                
+                // Nombre de clients actifs (pharmacies avec au moins une commande)
+                $activeClients = $commercial->pharmacies()
+                    ->whereHas('orders')
+                    ->count();
+                
+                // Récupérer la zone affectée au commercial
+                $zoneName = $commercial->zone ? $commercial->zone->name : 'Non assigné';
                 
                 $row = [
                     $commercial->id,
                     $commercial->last_name,
                     $commercial->first_name,
                     $commercial->email,
-                    $zones,
+                    $commercial->phone ?? 'Non renseigné',
+                    $commercial->hire_date ? $commercial->hire_date->format('d/m/Y') : 'Non renseigné',
+                    $zoneName,
                     $commercial->pharmacies_count,
-                    number_format($totalAmount, 2, ',', ' ')
+                    $orderCount,
+                    number_format($totalAmount, 2, ',', ' '),
+                    number_format($averageOrderAmount, 2, ',', ' '),
+                    number_format($totalMonthlyGoal, 2, ',', ' '),
+                    number_format($performance, 2, ',', ' ') . '%',
+                    $activeClients
                 ];
                 
                 fputcsv($file, $row);
@@ -342,7 +420,7 @@ class ExportController extends Controller
     {
         $commercial = User::where('role', 'commercial')
             ->withCount('pharmacies')
-            ->with('zones')
+            ->with('zone')
             ->findOrFail($commercialId);
         
         $filename = 'performance_' . $commercial->first_name . '_' . $commercial->last_name . '_' . Carbon::now()->format('Ymd_His') . '.csv';
@@ -355,7 +433,7 @@ class ExportController extends Controller
             'Expires' => '0'
         ];
         
-        $columns = ['Nom', 'Prénom', 'Email', 'Zones affectées', 'Nombre de pharmacies', 'Total rapporté (€)'];
+        $columns = ['Nom', 'Prénom', 'Email', 'Téléphone', 'Date d\'embauche', 'Zone affectée', 'Nombre de pharmacies', 'Nombre de commandes', 'Total rapporté (€)', 'Moyenne par commande (€)', 'Objectif mensuel total (€)', 'Performance (%)', 'Nombre de clients actifs', 'Liste des pharmacies'];
         
         $callback = function() use ($commercial, $columns) {
             $file = fopen('php://output', 'w');
@@ -363,20 +441,58 @@ class ExportController extends Controller
             
             // Calculer le total rapporté par le commercial
             $pharmacyIds = $commercial->pharmacies()->pluck('id')->toArray();
-            $totalAmount = Order::whereIn('pharmacy_id', $pharmacyIds)
-                ->join('order_items', 'orders.id', '=', 'order_items.order_id')
-                ->sum(\DB::raw('order_items.quantity * order_items.unit_price * (1 - order_items.discount_percentage / 100)'));
             
-            // Récupérer les zones affectées au commercial
-            $zones = $commercial->zones->pluck('name')->implode(', ');
+            // Obtenir toutes les commandes pour calculer différentes métriques
+            $orders = Order::whereIn('pharmacy_id', $pharmacyIds)
+                ->orWhere('commercial_id', $commercial->id)
+                ->get();
+            
+            $orderCount = $orders->count();
+            
+            // Calculer le montant total des commandes
+            $totalAmount = 0;
+            foreach ($orders as $order) {
+                $orderTotal = $order->items->sum(function($item) {
+                    return $item->quantity * $item->unit_price * (1 - $item->discount_percentage / 100);
+                });
+                $totalAmount += $orderTotal;
+            }
+            
+            // Calculer la moyenne par commande
+            $averageOrderAmount = $orderCount > 0 ? $totalAmount / $orderCount : 0;
+            
+            // Calculer l'objectif mensuel total (somme des objectifs de toutes les pharmacies assignées)
+            $totalMonthlyGoal = $commercial->pharmacies()->sum('monthly_goal');
+            
+            // Calculer la performance (total rapporté / objectif mensuel * 100)
+            $performance = $totalMonthlyGoal > 0 ? ($totalAmount / $totalMonthlyGoal) * 100 : 0;
+            
+            // Nombre de clients actifs (pharmacies avec au moins une commande)
+            $activeClients = $commercial->pharmacies()
+                ->whereHas('orders')
+                ->count();
+            
+            // Récupérer la zone affectée au commercial
+            $zoneName = $commercial->zone ? $commercial->zone->name : 'Non assigné';
+            
+            // Liste des pharmacies assignées au commercial
+            $pharmaciesList = $commercial->pharmacies()->pluck('name')->implode(', ');
             
             $row = [
                 $commercial->last_name,
                 $commercial->first_name,
                 $commercial->email,
-                $zones,
+                $commercial->phone ?? 'Non renseigné',
+                $commercial->hire_date ? $commercial->hire_date->format('d/m/Y') : 'Non renseigné',
+                $zoneName,
                 $commercial->pharmacies_count,
-                number_format($totalAmount, 2, ',', ' ')
+                $orderCount,
+                number_format($totalAmount, 2, ',', ' '),
+                number_format($averageOrderAmount, 2, ',', ' '),
+                number_format($totalMonthlyGoal, 2, ',', ' '),
+                number_format($performance, 2, ',', ' ') . '%',
+                $activeClients,
+                $pharmaciesList
             ];
             
             fputcsv($file, $row);
