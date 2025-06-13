@@ -23,6 +23,8 @@ Ce fichier sert de carnet de bord pour retracer toutes les étapes, décisions, 
 - [X] (Tableau 1) Pharmacies par zone : permettre le téléchargement des infos d'une zone en particulier au format CSV
 - [X] (Tableau 2) Performances des commerciaux : permettre le téléchargement de toutes les infos de tous les commerciaux (ventes, zone affectée, nombre de pharmacies, total rapporté en €) au format CSV
 - [X] (Tableau 2) Performances des commerciaux : permettre le téléchargement des infos d'un commercial en particulier au format CSV
+- [X] Afficher sous forme de graphique la répartition des pharmacies par zone et le nombre de commandes par zone
+- [X] Afficher sous forme de graphique la répartition des pharmacies par commercial et le nombre de commandes par commercial
 
 ---
 
@@ -160,3 +162,12 @@ Fichiers modifiés :
 Fichiers modifiés :
 - `resources/views/admin/reports/index.blade.php`
 - `app/Http/Controllers/Admin/ReportController.php`
+
+**[13/06/2025 - 17:28]** Clôture du projet avec toutes les fonctionnalités demandées implémentées :
+- Tableau de bord commercial avec graphiques et exports CSV
+- Page Rapports avec tableaux, statistiques synthétiques et graphiques pour les zones et les commerciaux
+- Exports CSV pour toutes les données importantes
+- Interface utilisateur intuitive et cohérente avec Tailwind CSS
+- Visualisations interactives avec Chart.js
+
+Le projet NaturaCorp est maintenant complet avec toutes les fonctionnalités demandées implémentées et testées.
