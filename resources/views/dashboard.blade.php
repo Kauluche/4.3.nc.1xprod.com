@@ -374,7 +374,7 @@
                             <div class="p-5">
                                 <div class="flex justify-between items-center mb-4">
                                     <h2 class="text-lg font-medium text-gray-900">Ventes par période</h2>
-                                    <a href="{{ route('export.sales') }}" style="background-color: #047857; color: white; border: 2px solid #1f2937;" class="inline-flex items-center px-3 py-2 border-2 border-gray-800 text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                    <a href="{{ route('export.sales', ['period_type' => $period_type, 'start_date' => $start_date, 'end_date' => $end_date]) }}" style="background-color: #047857; color: white; border: 2px solid #1f2937;" class="inline-flex items-center px-3 py-2 border-2 border-gray-800 text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                                         <svg class="-ml-0.5 mr-2 h-4 w-4 text-yellow-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
                                         </svg>
@@ -392,7 +392,7 @@
                             <div class="p-5">
                                 <div class="flex justify-between items-center mb-4">
                                     <h2 class="text-lg font-medium text-gray-900">Clients rapportés par période</h2>
-                                    <a href="{{ route('export.clients') }}" style="background-color: #047857; color: white; border: 2px solid #1f2937;" class="inline-flex items-center px-3 py-2 border-2 border-gray-800 text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                    <a href="{{ route('export.clients', ['period_type' => $period_type, 'start_date' => $start_date, 'end_date' => $end_date]) }}" style="background-color: #047857; color: white; border: 2px solid #1f2937;" class="inline-flex items-center px-3 py-2 border-2 border-gray-800 text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                                         <svg class="-ml-0.5 mr-2 h-4 w-4 text-yellow-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
                                         </svg>
@@ -479,12 +479,6 @@
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-lg font-medium text-gray-900 mb-4">Commandes récentes</h2>
                         <div class="flex space-x-2">
-                            <a href="{{ route('export.recent-sales') }}" class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-indigo-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                <svg class="-ml-0.5 mr-2 h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-                                </svg>
-                                Exporter CSV
-                            </a>
                             <a href="{{ route('commercial.orders.index') }}" class="btn-primary">
                                 <i class="fas fa-plus mr-2"></i>Voir toutes mes commandes
                             </a>

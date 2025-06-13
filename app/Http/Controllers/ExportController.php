@@ -21,6 +21,11 @@ class ExportController extends Controller
         $user = Auth::user();
         $startDate = $request->input('start_date', Carbon::now()->subMonth()->format('Y-m-d'));
         $endDate = $request->input('end_date', Carbon::now()->format('Y-m-d'));
+        
+        // Handle period_type if provided
+        if ($request->has('period_type') && !$request->has('start_date')) {
+            $this->setPeriodDates($request->input('period_type'), $startDate, $endDate);
+        }
 
         $pharmacyIds = $user->pharmacies()->pluck('id')->toArray();
         
@@ -77,6 +82,11 @@ class ExportController extends Controller
         $user = Auth::user();
         $startDate = $request->input('start_date', Carbon::now()->subMonth()->format('Y-m-d'));
         $endDate = $request->input('end_date', Carbon::now()->format('Y-m-d'));
+        
+        // Handle period_type if provided
+        if ($request->has('period_type') && !$request->has('start_date')) {
+            $this->setPeriodDates($request->input('period_type'), $startDate, $endDate);
+        }
 
         $clients = Pharmacy::where('commercial_id', $user->id)
             ->whereBetween('created_at', [$startDate, $endDate])
@@ -128,6 +138,11 @@ class ExportController extends Controller
         $user = Auth::user();
         $startDate = $request->input('start_date', Carbon::now()->subMonth()->format('Y-m-d'));
         $endDate = $request->input('end_date', Carbon::now()->format('Y-m-d'));
+        
+        // Handle period_type if provided
+        if ($request->has('period_type') && !$request->has('start_date')) {
+            $this->setPeriodDates($request->input('period_type'), $startDate, $endDate);
+        }
 
         $pharmacyIds = $user->pharmacies()->pluck('id')->toArray();
         
@@ -370,5 +385,38 @@ class ExportController extends Controller
         };
         
         return Response::stream($callback, 200, $headers);
+    }
+    
+    /**
+     * Helper method to set start and end dates based on period type
+     *
+     * @param string $periodType
+     * @param string &$startDate
+     * @param string &$endDate
+     * @return void
+     */
+    private function setPeriodDates($periodType, &$startDate, &$endDate)
+    {
+        switch ($periodType) {
+            case 'last30days':
+                $startDate = Carbon::now()->subDays(30)->startOfDay()->format('Y-m-d');
+                $endDate = Carbon::now()->endOfDay()->format('Y-m-d');
+                break;
+            case 'last3months':
+                $startDate = Carbon::now()->subMonths(2)->startOfMonth()->format('Y-m-d');
+                $endDate = Carbon::now()->endOfMonth()->format('Y-m-d');
+                break;
+            case 'last6months':
+                $startDate = Carbon::now()->subMonths(5)->startOfMonth()->format('Y-m-d');
+                $endDate = Carbon::now()->endOfMonth()->format('Y-m-d');
+                break;
+            case 'lastyear':
+                $startDate = Carbon::now()->subMonths(11)->startOfMonth()->format('Y-m-d');
+                $endDate = Carbon::now()->endOfMonth()->format('Y-m-d');
+                break;
+            default:
+                $startDate = Carbon::now()->subMonth()->format('Y-m-d');
+                $endDate = Carbon::now()->format('Y-m-d');
+        }
     }
 }

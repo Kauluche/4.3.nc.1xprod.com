@@ -31,7 +31,7 @@ class DashboardController extends Controller
                 $endDate = Carbon::now()->endOfDay();
                 break;
             case 'last3months':
-                $startDate = Carbon::now()->subMonths(3)->startOfMonth();
+                $startDate = Carbon::now()->subMonths(2)->startOfMonth();
                 $endDate = Carbon::now()->endOfMonth();
                 break;
             case 'last6months':
