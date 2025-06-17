@@ -1,0 +1,169 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{geometry}
+
+\geometry{margin=2.5cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+}
+
+\lstset{
+    language=PHP,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{green!60!black},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=5pt,
+    backgroundcolor=\color{gray!10},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    frame=single,
+    tabsize=4,
+    captionpos=b,
+    breaklines=true,
+    breakatwhitespace=false,
+    title=\lstname,
+    escapeinside={},
+    keywordstyle={},
+    morekeywords={}
+}
+
+\title{Rapport de fonctionnalité : Export CSV des pharmacies par zone}
+\author{NaturaCorp}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Description}
+Cette fonctionnalité permet aux administrateurs d'exporter en format CSV la liste complète des pharmacies regroupées par zone géographique. L'export inclut toutes les informations pertinentes sur les pharmacies, y compris leurs coordonnées, leur commercial assigné et leurs statistiques de commandes.
+
+\section{Objectifs}
+\begin{itemize}
+    \item Permettre l'extraction des données de toutes les pharmacies pour analyse externe
+    \item Fournir un format compatible avec les outils de tableur (Excel, LibreOffice Calc)
+    \item Inclure toutes les informations pertinentes sur les pharmacies et leur zone
+    \item Faciliter l'analyse de la répartition géographique des pharmacies
+\end{itemize}
+
+\section{Implémentation technique}
+
+\subsection{Fichiers concernés}
+\begin{itemize}
+    \item \texttt{app/Http/Controllers/ExportController.php} : Gestion de l'export CSV
+    \item \texttt{resources/views/admin/reports/index.blade.php} : Boutons d'export dans l'interface administrateur
+\end{itemize}
+
+\subsection{Méthode principale}
+La méthode \texttt{exportAllPharmaciesByZone} dans le \texttt{ExportController.php} est responsable de l'export des pharmacies par zone :
+
+\begin{lstlisting}[caption=Méthode exportAllPharmaciesByZone]
+public function exportAllPharmaciesByZone()
+{
+    // Récupération de toutes les zones avec leurs pharmacies associées
+    // SELECT zones.*, pharmacies.* FROM zones
+    // LEFT JOIN pharmacies ON zones.id = pharmacies.zone_id
+    // ORDER BY zones.name ASC
+    $zones = Zone::with('pharmacies')->get();
+    
+    $filename = 'pharmacies_par_zone_' . Carbon::now()->format('Ymd_His') . '.csv';
+    
+    // Utilisation de la méthode streamDownload pour optimiser la mémoire
+    return response()->streamDownload(function() use ($zones) {
+        // Ouvrir un flux de sortie PHP
+        $handle = fopen('php://output', 'w');
+        
+        // Écrire l'en-tête UTF-8 BOM pour Excel
+        fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+        
+        // Écrire les en-têtes du CSV
+        fputcsv($handle, [
+            'Zone',
+            'Nom pharmacie',
+            'Adresse',
+            'Code postal',
+            'Ville',
+            'Téléphone',
+            'Email',
+            'Commercial assigné',
+            'Nombre de commandes',
+            'Montant total des commandes'
+        ]);
+        
+        // Écrire les données, regroupées par zone
+        foreach ($zones as $zone) {
+            foreach ($zone->pharmacies as $pharmacy) {
+                // Calculer le nombre de commandes et le montant total
+                $orderCount = Order::where('pharmacy_id', $pharmacy->id)->count();
+                
+                $totalAmount = Order::where('pharmacy_id', $pharmacy->id)
+                    ->join('order_items', 'orders.id', '=', 'order_items.order_id')
+                    ->sum(DB::raw('order_items.quantity * order_items.unit_price * (1 - order_items.discount_percentage / 100)'));
+                
+                // Récupérer le nom du commercial assigné
+                $commercialName = $pharmacy->commercial 
+                    ? $pharmacy->commercial->first_name . ' ' . $pharmacy->commercial->last_name 
+                    : 'Non assigné';
+                
+                fputcsv($handle, [
+                    $zone->name,
+                    $pharmacy->name,
+                    $pharmacy->address,
+                    $pharmacy->postal_code,
+                    $pharmacy->city,
+                    $pharmacy->phone,
+                    $pharmacy->email,
+                    $commercialName,
+                    $orderCount,
+                    number_format($totalAmount, 2, ',', ' ') . ' €'
+                ]);
+            }
+        }
+        
+        fclose($handle);
+    }, $filename);
+}
+\end{lstlisting}
+
+\subsection{Traitement des données}
+\begin{itemize}
+    \item Les zones et leurs pharmacies associées sont récupérées avec un chargement eager
+    \item Pour chaque pharmacie, le nombre de commandes et le montant total sont calculés
+    \item Le nom du commercial assigné est récupéré à partir de la relation
+    \item Les données sont formatées pour être compatibles avec Excel (encodage UTF-8 avec BOM)
+\end{itemize}
+
+\subsection{Optimisation de la mémoire}
+\begin{itemize}
+    \item Utilisation de \texttt{response()->streamDownload()} pour générer le fichier en streaming
+    \item Évite de charger l'ensemble du fichier CSV en mémoire
+    \item Permet de gérer des exports volumineux sans problème de mémoire
+\end{itemize}
+
+\section{Avantages}
+\begin{itemize}
+    \item Export complet des données pharmacies pour analyse externe
+    \item Regroupement par zone géographique pour une analyse territoriale
+    \item Format CSV compatible avec tous les outils de tableur
+    \item Inclusion des statistiques de commandes pour évaluer la performance par zone
+    \item Optimisation de la mémoire pour gérer de grands volumes de données
+\end{itemize}
+
+\end{document}

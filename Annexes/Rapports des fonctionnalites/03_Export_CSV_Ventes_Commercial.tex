@@ -1,0 +1,185 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{geometry}
+
+\geometry{margin=2.5cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+}
+
+\lstset{
+    language=PHP,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{green!60!black},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=5pt,
+    backgroundcolor=\color{gray!10},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    frame=single,
+    tabsize=4,
+    captionpos=b,
+    breaklines=true,
+    breakatwhitespace=false,
+    title=\lstname,
+    escapeinside={},
+    keywordstyle={},
+    morekeywords={}
+}
+
+\title{Rapport de fonctionnalité : Export CSV des ventes du commercial}
+\author{NaturaCorp}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Description}
+Cette fonctionnalité permet aux commerciaux d'exporter en format CSV les données détaillées de leurs ventes sur une période spécifique. L'export inclut toutes les commandes passées par les pharmacies assignées au commercial, avec les informations sur les produits, quantités, prix et remises.
+
+\section{Objectifs}
+\begin{itemize}
+    \item Permettre l'extraction des données de ventes pour analyse externe
+    \item Fournir un format compatible avec les outils de tableur (Excel, LibreOffice Calc)
+    \item Inclure toutes les informations pertinentes sur les commandes et les produits
+    \item Filtrer les données par période spécifique
+\end{itemize}
+
+\section{Implémentation technique}
+
+\subsection{Fichiers concernés}
+\begin{itemize}
+    \item \texttt{app/Http/Controllers/ExportController.php} : Gestion de l'export CSV
+    \item \texttt{resources/views/dashboard.blade.php} : Boutons d'export et sélecteurs de période
+\end{itemize}
+
+\subsection{Méthode principale}
+La méthode \texttt{exportCommercialSales} dans le \texttt{ExportController.php} est responsable de l'export des ventes :
+
+\begin{lstlisting}[caption=Méthode exportCommercialSales]
+public function exportCommercialSales(Request $request)
+{
+    $user = auth()->user();
+    
+    // Vérifier que l'utilisateur est un commercial
+    if ($user->role !== 'commercial') {
+        return redirect()->back()->with('error', 'Accès non autorisé');
+    }
+    
+    // Récupérer les dates de début et de fin
+    $startDate = $request->input('start_date') 
+        ? Carbon::parse($request->input('start_date')) 
+        : Carbon::now()->subDays(30);
+    $endDate = $request->input('end_date') 
+        ? Carbon::parse($request->input('end_date')) 
+        : Carbon::now();
+    
+    // Handle period_type if provided
+    if ($request->has('period_type') && !$request->has('start_date')) {
+        $this->setPeriodDates($request->input('period_type'), $startDate, $endDate);
+    }
+    
+    // Récupération des IDs des pharmacies assignées au commercial
+    // SELECT id FROM pharmacies WHERE commercial_id = ?
+    $pharmacyIds = Pharmacy::where('commercial_id', $user->id)->pluck('id')->toArray();
+    
+    // Récupération des commandes pour ces pharmacies dans la période spécifiée
+    // SELECT * FROM orders 
+    // WHERE pharmacy_id IN (?) 
+    // AND created_at BETWEEN ? AND ?
+    // ORDER BY created_at DESC
+    $orders = Order::whereIn('pharmacy_id', $pharmacyIds)
+        ->whereBetween('created_at', [$startDate, $endDate])
+        ->with(['pharmacy', 'items', 'items.product']) // Chargement eager des relations
+        ->orderBy('created_at', 'desc')
+        ->get();
+    
+    // Générer le nom du fichier
+    $filename = 'ventes_' . $user->first_name . '_' . $user->last_name . '_' . Carbon::now()->format('Ymd_His') . '.csv';
+    
+    // Utilisation de la méthode streamDownload pour optimiser la mémoire
+    return response()->streamDownload(function() use ($orders) {
+        // Ouvrir un flux de sortie PHP
+        $handle = fopen('php://output', 'w');
+        
+        // Écrire l'en-tête UTF-8 BOM pour Excel
+        fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+        
+        // Écrire les en-têtes du CSV
+        fputcsv($handle, [
+            'Date commande',
+            'Référence commande',
+            'Pharmacie',
+            'Produit',
+            'Quantité',
+            'Prix unitaire',
+            'Remise (%)',
+            'Montant total'
+        ]);
+        
+        // Écrire les données
+        foreach ($orders as $order) {
+            foreach ($order->items as $item) {
+                $totalAmount = $item->quantity * $item->unit_price * (1 - $item->discount_percentage / 100);
+                
+                fputcsv($handle, [
+                    $order->created_at->format('d/m/Y H:i'),
+                    $order->reference,
+                    $order->pharmacy->name,
+                    $item->product->name,
+                    $item->quantity,
+                    number_format($item->unit_price, 2, ',', ' ') . ' €',
+                    $item->discount_percentage . '%',
+                    number_format($totalAmount, 2, ',', ' ') . ' €'
+                ]);
+            }
+        }
+        
+        fclose($handle);
+    }, $filename);
+}
+\end{lstlisting}
+
+\subsection{Traitement des données}
+\begin{itemize}
+    \item Les ventes sont récupérées à partir des commandes liées aux pharmacies du commercial
+    \item Les relations avec les pharmacies, les items de commande et les produits sont chargées de manière optimisée (eager loading)
+    \item Le montant total est calculé en tenant compte de la quantité, du prix unitaire et de la remise
+    \item Les données sont formatées pour être compatibles avec Excel (séparateur décimal, symbole monétaire)
+\end{itemize}
+
+\subsection{Optimisation de la mémoire}
+\begin{itemize}
+    \item Utilisation de \texttt{response()->streamDownload()} pour générer le fichier en streaming
+    \item Évite de charger l'ensemble du fichier CSV en mémoire
+    \item Permet de gérer des exports volumineux sans problème de mémoire
+\end{itemize}
+
+\section{Avantages}
+\begin{itemize}
+    \item Export complet des données de ventes pour analyse externe
+    \item Format CSV compatible avec tous les outils de tableur
+    \item Filtrage flexible par période
+    \item Optimisation de la mémoire pour gérer de grands volumes de données
+    \item Inclusion de toutes les informations pertinentes pour l'analyse des ventes
+\end{itemize}
+
+\end{document}

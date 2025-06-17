@@ -1,0 +1,174 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{geometry}
+
+\geometry{margin=2.5cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+}
+
+\lstset{
+    language=PHP,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{green!60!black},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=5pt,
+    backgroundcolor=\color{gray!10},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    frame=single,
+    tabsize=4,
+    captionpos=b,
+    breaklines=true,
+    breakatwhitespace=false,
+    title=\lstname,
+    escapeinside={},
+    keywordstyle={},
+    morekeywords={}
+}
+
+\title{Rapport de fonctionnalité : Export CSV des pharmacies d'une zone spécifique}
+\author{NaturaCorp}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Description}
+Cette fonctionnalité permet aux administrateurs d'exporter en format CSV la liste des pharmacies appartenant à une zone géographique spécifique. L'export inclut toutes les informations pertinentes sur les pharmacies, y compris leurs coordonnées, leur commercial assigné et leurs statistiques de commandes.
+
+\section{Objectifs}
+\begin{itemize}
+    \item Permettre l'extraction ciblée des données des pharmacies d'une zone spécifique
+    \item Fournir un format compatible avec les outils de tableur (Excel, LibreOffice Calc)
+    \item Inclure toutes les informations pertinentes sur les pharmacies
+    \item Faciliter l'analyse détaillée d'une zone géographique particulière
+\end{itemize}
+
+\section{Implémentation technique}
+
+\subsection{Fichiers concernés}
+\begin{itemize}
+    \item \texttt{app/Http/Controllers/ExportController.php} : Gestion de l'export CSV
+    \item \texttt{resources/views/admin/reports/index.blade.php} : Boutons d'export dans l'interface administrateur
+\end{itemize}
+
+\subsection{Méthode principale}
+La méthode \texttt{exportPharmaciesByZone} dans le \texttt{ExportController.php} est responsable de l'export des pharmacies d'une zone spécifique :
+
+\begin{lstlisting}[caption=Méthode exportPharmaciesByZone]
+public function exportPharmaciesByZone($zoneId)
+{
+    // Récupération d'une zone spécifique avec ses pharmacies associées
+    // SELECT zones.*, pharmacies.* FROM zones
+    // LEFT JOIN pharmacies ON zones.id = pharmacies.zone_id
+    // WHERE zones.id = ?
+    // LIMIT 1
+    $zone = Zone::with('pharmacies')->findOrFail($zoneId);
+    
+    $filename = 'pharmacies_zone_' . $zone->name . '_' . Carbon::now()->format('Ymd_His') . '.csv';
+    
+    // Utilisation de la méthode streamDownload pour optimiser la mémoire
+    return response()->streamDownload(function() use ($zone) {
+        // Ouvrir un flux de sortie PHP
+        $handle = fopen('php://output', 'w');
+        
+        // Écrire l'en-tête UTF-8 BOM pour Excel
+        fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+        
+        // Écrire les en-têtes du CSV
+        fputcsv($handle, [
+            'Nom pharmacie',
+            'Adresse',
+            'Code postal',
+            'Ville',
+            'Téléphone',
+            'Email',
+            'Commercial assigné',
+            'Nombre de commandes',
+            'Montant total des commandes',
+            'Date dernière commande'
+        ]);
+        
+        // Écrire les données pour chaque pharmacie de la zone
+        foreach ($zone->pharmacies as $pharmacy) {
+            // Calculer le nombre de commandes et le montant total
+            $orders = Order::where('pharmacy_id', $pharmacy->id)->get();
+            $orderCount = $orders->count();
+            
+            $totalAmount = Order::where('pharmacy_id', $pharmacy->id)
+                ->join('order_items', 'orders.id', '=', 'order_items.order_id')
+                ->sum(DB::raw('order_items.quantity * order_items.unit_price * (1 - order_items.discount_percentage / 100)'));
+            
+            // Récupérer la date de la dernière commande
+            $lastOrderDate = $orders->max('created_at') 
+                ? Carbon::parse($orders->max('created_at'))->format('d/m/Y') 
+                : 'Aucune commande';
+            
+            // Récupérer le nom du commercial assigné
+            $commercialName = $pharmacy->commercial 
+                ? $pharmacy->commercial->first_name . ' ' . $pharmacy->commercial->last_name 
+                : 'Non assigné';
+            
+            fputcsv($handle, [
+                $pharmacy->name,
+                $pharmacy->address,
+                $pharmacy->postal_code,
+                $pharmacy->city,
+                $pharmacy->phone,
+                $pharmacy->email,
+                $commercialName,
+                $orderCount,
+                number_format($totalAmount, 2, ',', ' ') . ' €',
+                $lastOrderDate
+            ]);
+        }
+        
+        fclose($handle);
+    }, $filename);
+}
+\end{lstlisting}
+
+\subsection{Traitement des données}
+\begin{itemize}
+    \item La zone spécifique et ses pharmacies associées sont récupérées avec un chargement eager
+    \item Pour chaque pharmacie, le nombre de commandes, le montant total et la date de dernière commande sont calculés
+    \item Le nom du commercial assigné est récupéré à partir de la relation
+    \item Les données sont formatées pour être compatibles avec Excel (encodage UTF-8 avec BOM)
+\end{itemize}
+
+\subsection{Optimisation de la mémoire}
+\begin{itemize}
+    \item Utilisation de \texttt{response()->streamDownload()} pour générer le fichier en streaming
+    \item Évite de charger l'ensemble du fichier CSV en mémoire
+    \item Permet de gérer des exports volumineux sans problème de mémoire
+\end{itemize}
+
+\section{Avantages}
+\begin{itemize}
+    \item Export ciblé des données pharmacies d'une zone spécifique
+    \item Format CSV compatible avec tous les outils de tableur
+    \item Inclusion des statistiques de commandes pour évaluer la performance
+    \item Optimisation de la mémoire pour gérer de grands volumes de données
+    \item Facilite l'analyse détaillée d'une zone géographique particulière
+\end{itemize}
+
+\end{document}
