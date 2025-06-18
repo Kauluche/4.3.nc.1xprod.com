@@ -1,0 +1,178 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{geometry}
+
+\geometry{margin=2.5cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+}
+
+\lstset{
+    language=PHP,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{green!60!black},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=5pt,
+    backgroundcolor=\color{gray!10},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    frame=single,
+    tabsize=4,
+    captionpos=b,
+    breaklines=true,
+    breakatwhitespace=false,
+    title=\lstname,
+    escapeinside={},
+    keywordstyle={},
+    morekeywords={}
+}
+
+\title{Rapport de fonctionnalité : Graphique des clients rapportés par le commercial}
+\author{NaturaCorp}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Description}
+Cette fonctionnalité permet aux commerciaux de visualiser sous forme de graphique l'évolution du nombre de nouveaux clients (pharmacies) qu'ils ont rapportés sur une période donnée. Le graphique présente le nombre de clients agrégés par jour, semaine ou mois selon la période sélectionnée.
+
+\section{Objectifs}
+\begin{itemize}
+    \item Offrir une visualisation claire de l'évolution de l'acquisition de nouveaux clients dans le temps
+    \item Permettre le filtrage par différentes périodes (30 derniers jours, 3 derniers mois, 6 derniers mois, dernière année)
+    \item Adapter automatiquement la granularité des données selon la période sélectionnée
+    \item Fournir une interface interactive pour consulter les détails au survol
+\end{itemize}
+
+\section{Implémentation technique}
+
+\subsection{Fichiers concernés}
+\begin{itemize}
+    \item \texttt{app/Http/Controllers/DashboardController.php} : Préparation des données pour le graphique
+    \item \texttt{resources/views/dashboard.blade.php} : Affichage du graphique et des contrôles de filtrage
+    \item Bibliothèque externe : Chart.js pour le rendu du graphique
+\end{itemize}
+
+\subsection{Méthode principale}
+La méthode \texttt{prepareClientsChartData} dans le \texttt{DashboardController.php} est responsable de la génération des données :
+
+\begin{lstlisting}[caption=Méthode prepareClientsChartData]
+private function prepareClientsChartData($user, Carbon $startDate, Carbon $endDate)
+{
+    $clientsData = [];
+    $labels = [];
+    $interval = 'month'; // Par défaut, intervalle mensuel
+    
+    // Déterminer l'intervalle approprié en fonction de la durée
+    $diffInDays = $startDate->diffInDays($endDate);
+    
+    if ($diffInDays <= 31) {
+        // Période courte (moins d'un mois) : afficher par jour
+        $interval = 'day';
+    } else if ($diffInDays <= 90) {
+        // Période moyenne (1-3 mois) : afficher par semaine
+        $interval = 'week';
+    }
+    
+    // Génération des données selon l'intervalle approprié
+    $currentDate = clone $startDate;
+    
+    while ($currentDate <= $endDate) {
+        // Déterminer la date de fin pour cette période selon l'intervalle
+        if ($interval == 'day') {
+            $nextDate = (clone $currentDate)->addDay();
+            $label = $currentDate->format('d/m');
+            
+            // Requête SQL pour compter les nouveaux clients par jour
+            // SELECT COUNT(*) FROM pharmacies 
+            // WHERE commercial_id = ? 
+            // AND DATE(created_at) = ?
+            $count = Pharmacy::where('commercial_id', $user->id)
+                ->whereDate('created_at', '=', $currentDate->format('Y-m-d'))
+                ->count();
+                
+        } else if ($interval == 'week') {
+            $nextDate = (clone $currentDate)->addWeek();
+            $label = $currentDate->format('d/m') . ' - ' . (clone $nextDate)->subDay()->format('d/m');
+            
+            // Requête SQL pour compter les nouveaux clients par semaine
+            // SELECT COUNT(*) FROM pharmacies 
+            // WHERE commercial_id = ? 
+            // AND created_at >= ? AND created_at < ?
+            $count = Pharmacy::where('commercial_id', $user->id)
+                ->whereDate('created_at', '>=', $currentDate->format('Y-m-d'))
+                ->whereDate('created_at', '<', $nextDate->format('Y-m-d'))
+                ->count();
+                
+        } else {
+            $nextDate = (clone $currentDate)->addMonth();
+            $label = $currentDate->format('M Y');
+            
+            // Requête SQL pour compter les nouveaux clients par mois
+            // SELECT COUNT(*) FROM pharmacies 
+            // WHERE commercial_id = ? 
+            // AND YEAR(created_at) = ? AND MONTH(created_at) = ?
+            $count = Pharmacy::where('commercial_id', $user->id)
+                ->whereYear('created_at', $currentDate->year)
+                ->whereMonth('created_at', $currentDate->month)
+                ->count();
+        }
+        
+        // Ajout des données au tableau pour le graphique
+        $labels[] = $label;
+        $clientsData[] = $count;
+        
+        $currentDate = $nextDate;
+    }
+    
+    return [
+        'labels' => $labels,
+        'data' => $clientsData
+    ];
+}
+\end{lstlisting}
+
+\subsection{Calcul des données}
+\begin{itemize}
+    \item Le nombre de clients est compté à partir des pharmacies créées par le commercial
+    \item Les données sont filtrées par la date de création et par l'ID du commercial
+    \item Les résultats sont agrégés par jour, semaine ou mois selon la durée de la période sélectionnée
+\end{itemize}
+
+\subsection{Interface utilisateur}
+\begin{itemize}
+    \item Graphique à barres réalisé avec Chart.js
+    \item Sélecteur de période (30 derniers jours, 3 derniers mois, 6 derniers mois, dernière année)
+    \item Affichage du nombre exact de clients au survol des barres du graphique
+    \item Mise à jour dynamique du graphique lors du changement de période
+\end{itemize}
+
+\section{Avantages}
+\begin{itemize}
+    \item Visualisation claire de l'évolution de l'acquisition de nouveaux clients
+    \item Granularité adaptative selon la période pour une meilleure lisibilité
+    \item Interface intuitive et réactive pour l'utilisateur
+    \item Aide à l'identification des tendances et des périodes de forte/faible activité d'acquisition
+\end{itemize}
+
+
+\end{document}

@@ -1,0 +1,87 @@
+# Contexte de l’épreuve – Projet NaturaCorp
+
+## 3.1 Objectif de l’épreuve
+Cette épreuve vise à évaluer la capacité du candidat à mettre en œuvre une opération de maintenance évolutive à partir d’une roadmap définie collectivement.
+
+Chaque étudiant prend en charge :
+- la conception,
+- le développement,
+- le test,
+- la documentation d’une fonctionnalité évolutive complexe, choisie dans le plan produit de son équipe.
+
+L’évaluation est individuelle sur l’ensemble de la démarche.
+
+---
+
+## 3.2 Contexte
+Dans le cadre du projet **NaturaCorp**, les étudiants ont produit en amont une roadmap d’évolutions fonctionnelles et techniques (**Livrable 4.0**).
+
+À partir de cette roadmap, chaque étudiant doit :
+- Sélectionner une évolution complexe parmi celles identifiées
+- La développer intégralement de manière autonome
+- Fournir un rapport complet retraçant l’ensemble de la démarche
+
+---
+
+## 3.4 Consignes
+- La fonctionnalité choisie doit être **non triviale** et représenter une valeur ajoutée significative pour l’application (ex. : module de statistiques, filtres combinés, intégration d’API, export de documents, système d’authentification avancée, etc.).
+- Chaque étudiant développe uniquement sa propre évolution, sans modifier les parties développées par ses camarades. La coordination au sein de l’équipe sert uniquement à garantir la cohérence globale du produit.
+- Les développements doivent respecter les bonnes pratiques de qualité logicielle : propreté du code, documentation, lisibilité, respect de l’architecture existante, absence de dette technique.
+- Un rapport individuel doit être produit au format **PDF**.
+- Une archive **ZIP** contenant les fichiers modifiés uniquement doit être transmise, accompagnée d’un **README.txt** si nécessaire.
+
+---
+
+## 3.6 Livrables attendus
+
+### 3.6.1 Rapport individuel au format PDF
+
+**Plan type :**
+1. **Introduction**
+   - Contexte du projet et de la roadmap
+   - Objectifs de la fonctionnalité choisie
+2. **Analyse préalable**
+   - Enjeux fonctionnels, techniques ou utilisateurs
+   - Contraintes identifiées
+3. **Conception**
+   - Schéma de base de données (si applicable)
+   - Diagrammes ou maquettes (si utiles à la compréhension)
+   - Choix techniques argumentés
+4. **Réalisation**
+   - Développement effectué
+   - Captures de code ou extraits clés avec explication
+   - Difficultés rencontrées et gestion
+5. **Tests et validation**
+   - Scénarios de tests mis en place
+   - Résultats observés
+   - Outils utilisés (Postman, Lighthouse, etc.)
+6. **Procédure de mise à jour**
+   - Liste des fichiers modifiés
+   - Étapes nécessaires pour intégrer la fonctionnalité dans le projet existant
+   - Commandes à exécuter si des dépendances ont été ajoutées (ex : composer, artisan, npm install, etc.)
+   - Précisions sur l’installation ou la mise à jour éventuelle de la base de données
+7. **Bilan personnel**
+   - Apports de cette épreuve
+   - Retour sur la méthodologie utilisée
+   - Recommandations éventuelles
+
+### 3.6.2 Code source (archive)
+
+**Contenu obligatoire :**
+- Uniquement les fichiers modifiés (et non l’ensemble du projet)
+- Script SQL si des modifications de schéma ont été apportées à la base de données
+- `README.txt` contenant :
+  - La liste des dépendances ou modules ajoutés
+  - Les commandes spécifiques à exécuter
+  - Les indications de configuration si nécessaires
+
+---
+
+## 3.7 Critères d’évaluation
+
+Les éléments suivants seront pris en compte :
+- Pertinence de l’évolution sélectionnée
+- Maîtrise technique de la mise en œuvre
+- Intégration harmonieuse dans le projet existant
+- Exhaustivité et clarté du rapport
+- Qualité de la documentation livrée (README, procédure de mise à jour)

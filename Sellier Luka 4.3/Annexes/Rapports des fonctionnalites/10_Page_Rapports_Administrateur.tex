@@ -1,0 +1,247 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{geometry}
+
+\geometry{margin=2.5cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+}
+
+\lstset{
+    language=PHP,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{green!60!black},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=5pt,
+    backgroundcolor=\color{gray!10},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    frame=single,
+    tabsize=4,
+    captionpos=b,
+    breaklines=true,
+    breakatwhitespace=false,
+    title=\lstname,
+    escapeinside={},
+    keywordstyle={},
+    morekeywords={}
+}
+
+\title{Rapport de fonctionnalité : Page des rapports administrateur}
+\author{NaturaCorp}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Description}
+Cette fonctionnalité fournit aux administrateurs une page complète de rapports et d'analyses présentant les indicateurs clés de performance (KPI) du système. Elle inclut des statistiques générales, des graphiques interactifs, des tableaux de données détaillées et des options d'export pour une analyse approfondie.
+
+\section{Objectifs}
+\begin{itemize}
+    \item Offrir une vue d'ensemble claire des performances du système
+    \item Présenter les indicateurs clés de performance (KPI) de manière synthétique
+    \item Fournir des visualisations graphiques interactives pour l'analyse des données
+    \item Permettre l'export des données pour une analyse externe plus approfondie
+    \item Faciliter la prise de décision basée sur les données
+\end{itemize}
+
+\section{Implémentation technique}
+
+\subsection{Fichiers concernés}
+\begin{itemize}
+    \item \texttt{app/Http/Controllers/Admin/ReportController.php} : Préparation des données pour la page de rapports
+    \item \texttt{resources/views/admin/reports/index.blade.php} : Vue principale des rapports
+    \item \texttt{app/Http/Controllers/ExportController.php} : Gestion des exports CSV
+    \item Bibliothèques externes : Chart.js pour les graphiques, Tailwind CSS pour l'interface
+\end{itemize}
+
+\subsection{Méthode principale}
+La méthode \texttt{index} dans le \texttt{ReportController.php} est responsable de la préparation des données pour la page de rapports :
+
+\begin{lstlisting}[caption=Méthode index du ReportController]
+public function index()
+{
+    // Statistiques générales
+    
+    // Nombre total de pharmacies
+    // SELECT COUNT(*) FROM pharmacies
+    $totalPharmacies = Pharmacy::count();
+    
+    // Nombre total de commandes
+    // SELECT COUNT(*) FROM orders
+    $totalOrders = Order::count();
+    
+    // Nombre total de commerciaux
+    // SELECT COUNT(*) FROM users WHERE role = 'commercial'
+    $totalCommercials = User::where('role', 'commercial')->count();
+    
+    // Chiffre d'affaires total
+    // SELECT SUM(quantity * unit_price * (1 - discount_percentage / 100)) FROM order_items
+    $totalRevenue = OrderItem::sum(DB::raw('quantity * unit_price * (1 - discount_percentage / 100)'));
+    
+    // Calcul du panier moyen
+    // Division du chiffre d'affaires total par le nombre de commandes
+    $averageOrderValue = $totalOrders > 0 
+        ? OrderItem::sum(DB::raw('quantity * unit_price * (1 - discount_percentage / 100)')) / $totalOrders 
+        : 0;
+    
+    // Taux de conversion (commandes / nombre de pharmacies)
+    // Calcul du ratio entre le nombre de commandes et le nombre de pharmacies
+    $conversionRate = $totalPharmacies > 0 
+        ? ($totalOrders / $totalPharmacies) * 100 
+        : 0;
+    
+    // Données pour le graphique de répartition des pharmacies par zone
+    // SELECT zones.*, COUNT(pharmacies.id) as pharmacies_count 
+    // FROM zones
+    // LEFT JOIN pharmacies ON zones.id = pharmacies.zone_id
+    // GROUP BY zones.id
+    // ORDER BY zones.name ASC
+    $pharmaciesByZone = Zone::withCount('pharmacies')
+        ->get()
+        ->map(function ($zone) {
+            return [
+                'name' => $zone->name,
+                'count' => $zone->pharmacies_count
+            ];
+        });
+    
+    // Données pour le graphique de répartition des commandes par commercial
+    // Cette requête est complexe car elle implique plusieurs jointures et une sous-requête
+    // SELECT users.*, 
+    //   (SELECT COUNT(DISTINCT orders.id) 
+    //    FROM orders 
+    //    JOIN pharmacies ON orders.pharmacy_id = pharmacies.id 
+    //    WHERE pharmacies.commercial_id = users.id) as orders_count
+    // FROM users
+    // WHERE users.role = 'commercial'
+    // ORDER BY users.last_name, users.first_name
+    $ordersByCommercial = User::where('role', 'commercial')
+        ->withCount(['orders' => function ($query) {
+            // Cette sous-requête compte les commandes distinctes liées aux pharmacies du commercial
+            $query->select(DB::raw('count(distinct orders.id)'))
+                ->join('pharmacies', 'orders.pharmacy_id', '=', 'pharmacies.id')
+                ->where('pharmacies.commercial_id', DB::raw('users.id'));
+        }])
+        ->get()
+        ->map(function ($commercial) {
+            return [
+                'name' => $commercial->first_name . ' ' . $commercial->last_name,
+                'count' => $commercial->orders_count
+            ];
+        });
+    
+    // Liste des zones pour le tableau
+    // SELECT zones.*, COUNT(pharmacies.id) as pharmacies_count 
+    // FROM zones
+    // LEFT JOIN pharmacies ON zones.id = pharmacies.zone_id
+    // GROUP BY zones.id
+    // ORDER BY zones.name ASC
+    $zones = Zone::withCount('pharmacies')->get();
+    
+    // Liste des commerciaux pour le tableau de performance
+    // SELECT users.*, COUNT(pharmacies.id) as pharmacies_count
+    // FROM users
+    // LEFT JOIN pharmacies ON users.id = pharmacies.commercial_id
+    // WHERE users.role = 'commercial'
+    // GROUP BY users.id
+    // ORDER BY users.last_name, users.first_name
+    $commercials = User::where('role', 'commercial')
+        ->withCount('pharmacies')
+        ->get();
+    
+    return view('admin.reports.index', compact(
+        'totalPharmacies',
+        'totalOrders',
+        'totalCommercials',
+        'totalRevenue',
+        'averageOrderValue',
+        'conversionRate',
+        'pharmaciesByZone',
+        'ordersByCommercial',
+        'zones',
+        'commercials'
+    ));
+}
+\end{lstlisting}
+
+\subsection{Structure de la page de rapports}
+La page de rapports dans \texttt{resources/views/admin/reports/index.blade.php} est organisée en plusieurs sections :
+
+\begin{enumerate}
+    \item \textbf{Statistiques générales (KPI)} : Affichage des indicateurs clés en haut de la page
+    \begin{itemize}
+        \item Nombre total de pharmacies
+        \item Nombre total de commandes
+        \item Nombre total de commerciaux
+        \item Chiffre d'affaires total
+        \item Panier moyen
+        \item Taux de conversion
+    \end{itemize}
+    
+    \item \textbf{Graphiques interactifs} : Visualisations des données principales
+    \begin{itemize}
+        \item Graphique circulaire de répartition des pharmacies par zone
+        \item Graphique à barres de répartition des commandes par commercial
+    \end{itemize}
+    
+    \item \textbf{Tableaux de données détaillées} : Listes avec informations complètes
+    \begin{itemize}
+        \item Tableau des zones avec nombre de pharmacies
+        \item Tableau des commerciaux avec leurs performances
+    \end{itemize}
+    
+    \item \textbf{Options d'export} : Boutons pour exporter les données en CSV
+    \begin{itemize}
+        \item Export des pharmacies par zone
+        \item Export des performances des commerciaux
+        \item Exports spécifiques par zone ou par commercial
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Calcul des indicateurs clés}
+\begin{itemize}
+    \item \textbf{Chiffre d'affaires total} : Somme des montants de tous les items de commande, calculés en tenant compte des quantités, prix unitaires et remises
+    \item \textbf{Panier moyen} : Chiffre d'affaires total divisé par le nombre de commandes
+    \item \textbf{Taux de conversion} : Pourcentage représentant le ratio entre le nombre de commandes et le nombre de pharmacies
+\end{itemize}
+
+\subsection{Interface utilisateur}
+\begin{itemize}
+    \item Interface responsive utilisant Tailwind CSS
+    \item Organisation en cartes (cards) pour chaque section
+    \item Utilisation de couleurs distinctives pour mettre en évidence les informations importantes
+    \item Graphiques interactifs avec Chart.js pour une expérience utilisateur améliorée
+    \item Tableaux avec tri et pagination pour faciliter la navigation dans les données
+\end{itemize}
+
+\section{Avantages}
+\begin{itemize}
+    \item Vue d'ensemble complète des performances du système en un seul écran
+    \item Visualisation claire des données clés pour une compréhension rapide
+    \item Accès facile aux données détaillées pour une analyse approfondie
+    \item Options d'export flexibles pour le traitement externe des données
+    \item Interface intuitive facilitant la navigation et l'interprétation des données
+    \item Aide à la prise de décision stratégique basée sur des données concrètes
+\end{itemize}
+
+\end{document}

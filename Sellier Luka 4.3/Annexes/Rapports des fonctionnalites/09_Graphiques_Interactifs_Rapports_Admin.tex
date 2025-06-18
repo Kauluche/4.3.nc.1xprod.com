@@ -1,0 +1,261 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{geometry}
+
+\geometry{margin=2.5cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+}
+
+\lstset{
+    language=PHP,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{green!60!black},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=5pt,
+    backgroundcolor=\color{gray!10},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    frame=single,
+    tabsize=4,
+    captionpos=b,
+    breaklines=true,
+    breakatwhitespace=false,
+    title=\lstname,
+    escapeinside={},
+    keywordstyle={},
+    morekeywords={}
+}
+
+\title{Rapport de fonctionnalité : Graphiques interactifs des rapports administrateur}
+\author{NaturaCorp}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Description}
+Cette fonctionnalité permet aux administrateurs de visualiser des graphiques interactifs présentant la répartition des pharmacies par zone géographique et la répartition des commandes par commercial. Ces graphiques offrent une vue synthétique des données clés du système et permettent une analyse visuelle rapide.
+
+\section{Objectifs}
+\begin{itemize}
+    \item Offrir une visualisation claire de la répartition des pharmacies par zone
+    \item Présenter la distribution des commandes entre les différents commerciaux
+    \item Fournir des graphiques interactifs avec informations détaillées au survol
+    \item Faciliter l'analyse rapide des données clés du système
+\end{itemize}
+
+\section{Implémentation technique}
+
+\subsection{Fichiers concernés}
+\begin{itemize}
+    \item \texttt{app/Http/Controllers/Admin/ReportController.php} : Préparation des données pour les graphiques
+    \item \texttt{resources/views/admin/reports/index.blade.php} : Affichage des graphiques
+    \item Bibliothèque externe : Chart.js pour le rendu des graphiques
+\end{itemize}
+
+\subsection{Méthode principale}
+La méthode \texttt{index} dans le \texttt{ReportController.php} est responsable de la préparation des données pour les graphiques :
+
+\begin{lstlisting}[caption=Méthode index du ReportController]
+public function index()
+{
+    // Statistiques générales
+    // SELECT COUNT(*) FROM pharmacies
+    $totalPharmacies = Pharmacy::count();
+    
+    // SELECT COUNT(*) FROM orders
+    $totalOrders = Order::count();
+    
+    // SELECT COUNT(*) FROM users WHERE role = 'commercial'
+    $totalCommercials = User::where('role', 'commercial')->count();
+    
+    // SELECT SUM(quantity * unit_price * (1 - discount_percentage / 100)) FROM order_items
+    $totalRevenue = OrderItem::sum(DB::raw('quantity * unit_price * (1 - discount_percentage / 100)'));
+    
+    // Données pour le graphique de répartition des pharmacies par zone
+    // SELECT zones.*, COUNT(pharmacies.id) as pharmacies_count 
+    // FROM zones
+    // LEFT JOIN pharmacies ON zones.id = pharmacies.zone_id
+    // GROUP BY zones.id
+    $pharmaciesByZone = Zone::withCount('pharmacies')
+        ->get()
+        ->map(function ($zone) {
+            return [
+                'name' => $zone->name,
+                'count' => $zone->pharmacies_count
+            ];
+        });
+    
+    // Données pour le graphique de répartition des commandes par commercial
+    // Cette requête est plus complexe car elle implique plusieurs jointures
+    // SELECT users.*, 
+    //   (SELECT COUNT(DISTINCT orders.id) 
+    //    FROM orders 
+    //    JOIN pharmacies ON orders.pharmacy_id = pharmacies.id 
+    //    WHERE pharmacies.commercial_id = users.id) as orders_count
+    // FROM users
+    // WHERE users.role = 'commercial'
+    $ordersByCommercial = User::where('role', 'commercial')
+        ->withCount(['orders' => function ($query) {
+            // Cette sous-requête compte les commandes distinctes liées aux pharmacies du commercial
+            $query->select(DB::raw('count(distinct orders.id)'))
+                ->join('pharmacies', 'orders.pharmacy_id', '=', 'pharmacies.id')
+                ->where('pharmacies.commercial_id', DB::raw('users.id'));
+        }])
+        ->get()
+        ->map(function ($commercial) {
+            return [
+                'name' => $commercial->first_name . ' ' . $commercial->last_name,
+                'count' => $commercial->orders_count
+            ];
+        });
+    
+    return view('admin.reports.index', compact(
+        'totalPharmacies',
+        'totalOrders',
+        'totalCommercials',
+        'totalRevenue',
+        'pharmaciesByZone',
+        'ordersByCommercial'
+    ));
+}
+\end{lstlisting}
+
+\subsection{Intégration des graphiques dans la vue}
+Dans le fichier \texttt{resources/views/admin/reports/index.blade.php}, les graphiques sont intégrés avec Chart.js :
+
+\begin{lstlisting}[caption=Intégration des graphiques avec Chart.js]
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <!-- Graphique de répartition des pharmacies par zone -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="text-lg font-semibold mb-4">Répartition des pharmacies par zone</h3>
+        <canvas id="pharmaciesByZoneChart" height="300"></canvas>
+    </div>
+    
+    <!-- Graphique de répartition des commandes par commercial -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="text-lg font-semibold mb-4">Répartition des commandes par commercial</h3>
+        <canvas id="ordersByCommercialChart" height="300"></canvas>
+    </div>
+</div>
+
+@section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Configuration du graphique des pharmacies par zone (Pie chart)
+    const pharmaciesByZoneCtx = document.getElementById('pharmaciesByZoneChart').getContext('2d');
+    const pharmaciesByZoneChart = new Chart(pharmaciesByZoneCtx, {
+        type: 'pie',
+        data: {
+            labels: {!! json_encode($pharmaciesByZone->pluck('name')) !!},
+            datasets: [{
+                data: {!! json_encode($pharmaciesByZone->pluck('count')) !!},
+                backgroundColor: [
+                    '#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+                    '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'right',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((value / total) * 100);
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Configuration du graphique des commandes par commercial (Bar chart)
+    const ordersByCommercialCtx = document.getElementById('ordersByCommercialChart').getContext('2d');
+    const ordersByCommercialChart = new Chart(ordersByCommercialCtx, {
+        type: 'bar',
+        data: {
+            labels: {!! json_encode($ordersByCommercial->pluck('name')) !!},
+            datasets: [{
+                label: 'Nombre de commandes',
+                data: {!! json_encode($ordersByCommercial->pluck('count')) !!},
+                backgroundColor: '#4F46E5',
+                borderColor: '#4338CA',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+</script>
+@endsection
+\end{lstlisting}
+
+\subsection{Types de graphiques et configuration}
+\begin{itemize}
+    \item \textbf{Graphique de répartition des pharmacies par zone} : Graphique circulaire (pie chart)
+    \begin{itemize}
+        \item Affiche la proportion de pharmacies dans chaque zone
+        \item Légende interactive sur le côté droit
+        \item Infobulles montrant le nombre exact et le pourcentage au survol
+        \item Couleurs distinctes pour chaque zone
+    \end{itemize}
+    \item \textbf{Graphique de répartition des commandes par commercial} : Graphique à barres (bar chart)
+    \begin{itemize}
+        \item Affiche le nombre de commandes générées par chaque commercial
+        \item Axe Y commençant à zéro avec des valeurs entières
+        \item Infobulles montrant le nombre exact de commandes au survol
+    \end{itemize}
+\end{itemize}
+
+\section{Avantages}
+\begin{itemize}
+    \item Visualisation claire et immédiate des données clés du système
+    \item Interface interactive permettant d'explorer les détails au survol
+    \item Facilite l'identification des zones les plus importantes et des commerciaux les plus performants
+    \item Aide à la prise de décision stratégique basée sur des données visuelles
+    \item Intégration élégante dans l'interface d'administration
+\end{itemize}
+
+\end{document}

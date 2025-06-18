@@ -1,0 +1,180 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{geometry}
+
+\geometry{margin=2.5cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+}
+
+\lstset{
+    language=PHP,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{green!60!black},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=5pt,
+    backgroundcolor=\color{gray!10},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    frame=single,
+    tabsize=4,
+    captionpos=b,
+    breaklines=true,
+    breakatwhitespace=false,
+    title=\lstname,
+    escapeinside={},
+    keywordstyle={},
+    morekeywords={}
+}
+
+\title{Rapport de fonctionnalité : Export CSV des clients du commercial}
+\author{NaturaCorp}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Description}
+Cette fonctionnalité permet aux commerciaux d'exporter en format CSV la liste de leurs clients (pharmacies) acquis sur une période spécifique. L'export inclut toutes les informations pertinentes sur les pharmacies, y compris leurs coordonnées et leur zone géographique.
+
+\section{Objectifs}
+\begin{itemize}
+    \item Permettre l'extraction des données clients pour analyse externe
+    \item Fournir un format compatible avec les outils de tableur (Excel, LibreOffice Calc)
+    \item Inclure toutes les informations pertinentes sur les pharmacies
+    \item Filtrer les données par période d'acquisition
+\end{itemize}
+
+\section{Implémentation technique}
+
+\subsection{Fichiers concernés}
+\begin{itemize}
+    \item \texttt{app/Http/Controllers/ExportController.php} : Gestion de l'export CSV
+    \item \texttt{resources/views/dashboard.blade.php} : Boutons d'export et sélecteurs de période
+\end{itemize}
+
+\subsection{Méthode principale}
+La méthode \texttt{exportCommercialClients} dans le \texttt{ExportController.php} est responsable de l'export des clients :
+
+\begin{lstlisting}[caption=Méthode exportCommercialClients]
+public function exportCommercialClients(Request $request)
+{
+    $user = auth()->user();
+    
+    // Vérifier que l'utilisateur est un commercial
+    if ($user->role !== 'commercial') {
+        return redirect()->back()->with('error', 'Accès non autorisé');
+    }
+    
+    // Récupérer les dates de début et de fin
+    $startDate = $request->input('start_date') 
+        ? Carbon::parse($request->input('start_date')) 
+        : Carbon::now()->subDays(30);
+    $endDate = $request->input('end_date') 
+        ? Carbon::parse($request->input('end_date')) 
+        : Carbon::now();
+    
+    // Handle period_type if provided
+    if ($request->has('period_type') && !$request->has('start_date')) {
+        // Cette méthode définit les dates de début et de fin en fonction du type de période
+        // Exemple: 'last_30_days', 'last_3_months', 'last_6_months', 'last_year'
+        $this->setPeriodDates($request->input('period_type'), $startDate, $endDate);
+    }
+
+    // Requête principale pour récupérer les clients (pharmacies) du commercial
+    // SELECT * FROM pharmacies 
+    // WHERE commercial_id = ? 
+    // AND created_at BETWEEN ? AND ? 
+    // ORDER BY created_at DESC
+    $clients = Pharmacy::where('commercial_id', $user->id)
+        ->whereBetween('created_at', [$startDate, $endDate])
+        // Chargement eager de la relation zone pour éviter le problème N+1
+        // Cela ajoute automatiquement un LEFT JOIN avec la table zones
+        ->with('zone')
+        ->get();
+    
+    // Générer le nom du fichier
+    $filename = 'clients_' . $user->first_name . '_' . $user->last_name . '_' . Carbon::now()->format('Ymd_His') . '.csv';
+    
+    // Utilisation de la méthode streamDownload pour optimiser la mémoire
+    return response()->streamDownload(function() use ($clients) {
+        // Ouvrir un flux de sortie PHP
+        $handle = fopen('php://output', 'w');
+        
+        // Écrire l'en-tête UTF-8 BOM pour Excel
+        fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+        
+        // Écrire les en-têtes du CSV
+        fputcsv($handle, [
+            'Date création',
+            'Nom pharmacie',
+            'Adresse',
+            'Code postal',
+            'Ville',
+            'Téléphone',
+            'Email',
+            'Zone'
+        ]);
+        
+        // Écrire les données
+        foreach ($clients as $client) {
+            fputcsv($handle, [
+                $client->created_at->format('d/m/Y'),
+                $client->name,
+                $client->address,
+                $client->postal_code,
+                $client->city,
+                $client->phone,
+                $client->email,
+                $client->zone ? $client->zone->name : 'Non assigné'
+            ]);
+        }
+        
+        fclose($handle);
+    }, $filename);
+}
+\end{lstlisting}
+
+\subsection{Traitement des données}
+\begin{itemize}
+    \item Les clients sont récupérés à partir des pharmacies assignées au commercial
+    \item Les données sont filtrées par la date de création et par l'ID du commercial
+    \item La relation avec la zone est chargée de manière optimisée (eager loading)
+    \item Les données sont formatées pour être compatibles avec Excel (encodage UTF-8 avec BOM)
+\end{itemize}
+
+\subsection{Optimisation de la mémoire}
+\begin{itemize}
+    \item Utilisation de \texttt{response()->streamDownload()} pour générer le fichier en streaming
+    \item Évite de charger l'ensemble du fichier CSV en mémoire
+    \item Permet de gérer des exports volumineux sans problème de mémoire
+\end{itemize}
+
+\section{Avantages}
+\begin{itemize}
+    \item Export complet des données clients pour analyse externe
+    \item Format CSV compatible avec tous les outils de tableur
+    \item Filtrage flexible par période d'acquisition
+    \item Optimisation de la mémoire pour gérer de grands volumes de données
+    \item Inclusion de toutes les informations pertinentes pour l'analyse de la clientèle
+\end{itemize}
+
+\end{document}

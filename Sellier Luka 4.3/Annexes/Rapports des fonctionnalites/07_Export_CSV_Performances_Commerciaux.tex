@@ -1,0 +1,195 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{geometry}
+
+\geometry{margin=2.5cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+}
+
+\lstset{
+    language=PHP,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{green!60!black},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=5pt,
+    backgroundcolor=\color{gray!10},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    frame=single,
+    tabsize=4,
+    captionpos=b,
+    breaklines=true,
+    breakatwhitespace=false,
+    title=\lstname,
+    escapeinside={},
+    keywordstyle={},
+    morekeywords={}
+}
+
+\title{Rapport de fonctionnalité : Export CSV des performances des commerciaux}
+\author{NaturaCorp}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Description}
+Cette fonctionnalité permet aux administrateurs d'exporter en format CSV les données de performance de tous les commerciaux. L'export inclut les statistiques clés comme le nombre de pharmacies assignées, le nombre de commandes générées, le chiffre d'affaires total, ainsi que les objectifs et les performances en pourcentage.
+
+\section{Objectifs}
+\begin{itemize}
+    \item Permettre l'extraction des données de performance pour analyse externe
+    \item Fournir un format compatible avec les outils de tableur (Excel, LibreOffice Calc)
+    \item Inclure toutes les métriques pertinentes pour évaluer la performance des commerciaux
+    \item Faciliter la comparaison des performances entre commerciaux
+\end{itemize}
+
+\section{Implémentation technique}
+
+\subsection{Fichiers concernés}
+\begin{itemize}
+    \item \texttt{app/Http/Controllers/ExportController.php} : Gestion de l'export CSV
+    \item \texttt{resources/views/admin/reports/index.blade.php} : Boutons d'export dans l'interface administrateur
+\end{itemize}
+
+\subsection{Méthode principale}
+La méthode \texttt{exportAllCommercialsPerformance} dans le \texttt{ExportController.php} est responsable de l'export des performances des commerciaux :
+
+\begin{lstlisting}[caption=Méthode exportAllCommercialsPerformance]
+public function exportAllCommercialsPerformance()
+{
+    // Récupération de tous les commerciaux avec le nombre de pharmacies assignées et leur zone
+    // SELECT users.*, COUNT(pharmacies.id) as pharmacies_count, zones.*
+    // FROM users
+    // LEFT JOIN pharmacies ON users.id = pharmacies.commercial_id
+    // LEFT JOIN zones ON users.zone_id = zones.id
+    // WHERE users.role = 'commercial'
+    // GROUP BY users.id
+    $commercials = User::where('role', 'commercial')
+        ->withCount('pharmacies') // Ajoute un COUNT() des pharmacies liées
+        ->with('zone') // Charge la relation zone pour chaque commercial
+        ->get();
+    
+    $filename = 'performances_commerciaux_' . Carbon::now()->format('Ymd_His') . '.csv';
+    
+    // Utilisation de la méthode streamDownload pour optimiser la mémoire
+    return response()->streamDownload(function() use ($commercials) {
+        // Ouvrir un flux de sortie PHP
+        $handle = fopen('php://output', 'w');
+        
+        // Écrire l'en-tête UTF-8 BOM pour Excel
+        fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+        
+        // Écrire les en-têtes du CSV
+        fputcsv($handle, [
+            'Nom',
+            'Prénom',
+            'Email',
+            'Zone',
+            'Nombre de pharmacies',
+            'Nombre de commandes',
+            'CA total',
+            'CA moyen par commande',
+            'Objectif mensuel',
+            'Performance (%)',
+            'Clients actifs (%)'
+        ]);
+        
+        // Écrire les données pour chaque commercial
+        foreach ($commercials as $commercial) {
+            // Récupérer les IDs des pharmacies assignées à ce commercial
+            $pharmacyIds = Pharmacy::where('commercial_id', $commercial->id)->pluck('id')->toArray();
+            
+            // Calculer le nombre de commandes
+            $orderCount = Order::whereIn('pharmacy_id', $pharmacyIds)->count();
+            
+            // Calculer le CA total
+            $totalRevenue = Order::whereIn('pharmacy_id', $pharmacyIds)
+                ->join('order_items', 'orders.id', '=', 'order_items.order_id')
+                ->sum(DB::raw('order_items.quantity * order_items.unit_price * (1 - order_items.discount_percentage / 100)'));
+            
+            // Calculer le CA moyen par commande
+            $averageOrderValue = $orderCount > 0 ? $totalRevenue / $orderCount : 0;
+            
+            // Objectif mensuel (exemple : 10000€ ou valeur personnalisée stockée en base)
+            $monthlyTarget = $commercial->monthly_target ?? 10000;
+            
+            // Performance en pourcentage par rapport à l'objectif
+            $performance = $monthlyTarget > 0 ? ($totalRevenue / $monthlyTarget) * 100 : 0;
+            
+            // Calculer le pourcentage de clients actifs (ayant passé au moins une commande)
+            $activePharmacies = $commercial->pharmacies_count > 0 
+                ? (Pharmacy::where('commercial_id', $commercial->id)
+                    ->whereHas('orders')->count() / $commercial->pharmacies_count) * 100 
+                : 0;
+            
+            fputcsv($handle, [
+                $commercial->last_name,
+                $commercial->first_name,
+                $commercial->email,
+                $commercial->zone ? $commercial->zone->name : 'Non assigné',
+                $commercial->pharmacies_count,
+                $orderCount,
+                number_format($totalRevenue, 2, ',', ' ') . ' €',
+                number_format($averageOrderValue, 2, ',', ' ') . ' €',
+                number_format($monthlyTarget, 2, ',', ' ') . ' €',
+                number_format($performance, 2, ',', ' ') . '%',
+                number_format($activePharmacies, 2, ',', ' ') . '%'
+            ]);
+        }
+        
+        fclose($handle);
+    }, $filename);
+}
+\end{lstlisting}
+
+\subsection{Traitement des données}
+\begin{itemize}
+    \item Les commerciaux sont récupérés avec le nombre de pharmacies assignées et leur zone
+    \item Pour chaque commercial, plusieurs métriques sont calculées :
+    \begin{itemize}
+        \item Nombre de commandes générées par ses pharmacies
+        \item Chiffre d'affaires total
+        \item Panier moyen (CA moyen par commande)
+        \item Performance par rapport à l'objectif mensuel
+        \item Pourcentage de clients actifs (ayant passé au moins une commande)
+    \end{itemize}
+    \item Les données sont formatées pour être compatibles avec Excel (encodage UTF-8 avec BOM)
+\end{itemize}
+
+\subsection{Optimisation de la mémoire}
+\begin{itemize}
+    \item Utilisation de \texttt{response()->streamDownload()} pour générer le fichier en streaming
+    \item Évite de charger l'ensemble du fichier CSV en mémoire
+    \item Permet de gérer des exports volumineux sans problème de mémoire
+\end{itemize}
+
+\section{Avantages}
+\begin{itemize}
+    \item Export complet des données de performance pour analyse externe
+    \item Format CSV compatible avec tous les outils de tableur
+    \item Inclusion de multiples métriques pour une évaluation complète des performances
+    \item Facilite la comparaison entre commerciaux et l'identification des meilleurs performers
+    \item Optimisation de la mémoire pour gérer de grands volumes de données
+\end{itemize}
+
+\end{document}
